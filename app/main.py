@@ -33,6 +33,7 @@ logger = get_logger(__name__)
 # CORS Middleware (Frontend Access)
 # -------------------------------------------------
 # Must exactly match the browser's "Origin" header
+# Must exactly match the browser's "Origin" header
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -40,13 +41,12 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
-    # Add trailing slash just in case (though browsers usually strip it)
-    "http://localhost:3000/",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    # allow_origins=origins, # Commented out in favor of regex for flexibility
+    allow_origin_regex="https?://.*", # Allow all http/https origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

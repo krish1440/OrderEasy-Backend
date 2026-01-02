@@ -41,12 +41,14 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    "https://order-easy-blond.vercel.app",
+    "https://order-easy-blond.vercel.app/",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=origins, # Commented out in favor of regex for flexibility
-    allow_origin_regex="https?://.*", # Allow all http/https origins
+    allow_origins=origins,
+    # allow_origin_regex="https?://.*", # Disabled in favor of specific origins for security
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

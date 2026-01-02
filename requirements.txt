@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-dotenv
+bcrypt
+supabase
+cloudinary
+pandas
+numpy
+scikit-learn
+openpyxl
+python-multipart
+itsdangerous

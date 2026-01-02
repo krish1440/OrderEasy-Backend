@@ -57,11 +57,16 @@ app.add_middleware(
 # -------------------------------------------------
 # Session Middleware
 # -------------------------------------------------
+import os
+
+# Determine if running in production (Render)
+is_production = os.getenv("RENDER") or False
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
-    same_site="lax",
-    https_only=False  # set True in production with HTTPS
+    same_site="none" if is_production else "lax",
+    https_only=True if is_production else False  # set True in production with HTTPS
 )
 
 # -------------------------------------------------

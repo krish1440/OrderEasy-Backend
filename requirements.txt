@@ -10,3 +10,4 @@ scikit-learn
 openpyxl
 python-multipart
 itsdangerous
+google-generativeai

@@ -89,8 +89,15 @@ app.include_router(upload_router, prefix="/upload", tags=["Uploads"])
 
 
 # ------------------------------------------------
-# Health Check
+# Root & Health Check
 # -------------------------------------------------
+@app.get("/")
+def root():
+    return {
+        "status": "online",
+        "message": "OrderEasy Analytics Backend is Live 🚀"
+    }
+
 @app.get("/health")
 def health_check():
     return {

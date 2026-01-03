@@ -185,10 +185,24 @@ def revenue_forecast(request: Request):
             "upper_bound": round(high, 2)
         })
 
+    # -------------------------------------------------
+    # 6. Extract Historical Data (Last 12 Months)
+    # -------------------------------------------------
+    historical = []
+    # Get last 12 months or all if less than 12
+    history_df = df.tail(12)
+    
+    for _, row in history_df.iterrows():
+        historical.append({
+            "month": row["month_date"].strftime("%b %Y"),
+            "revenue": round(row["total_amount_with_gst"], 2)
+        })
+
     logger.info(f"Seasonal Harmonic forecast generated for org: {org}")
 
     return {
         "r2_score": round(float(r2), 4),
         "confidence_level": "80%",
+        "historical_data": historical,
         "forecast_12_months": forecast
     }

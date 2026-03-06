@@ -1,25 +1,24 @@
-import google.generativeai as genai
+from google import genai as google_genai
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configure Gemini
+# Configure Gemini using the new google.genai SDK
 api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
+GEMINI_CLIENT = google_genai.Client(api_key=api_key) if api_key else None
 
 # Models prioritized by cost/performance
 MODELS = [
-    'gemini-2.5-flash',       # Primary: Fast & Balanced
-    'gemini-2.5-flash-lite',  # Secondary: Cheaper/Faster
+    'models/gemini-2.5-flash',       # Primary: Fast & Balanced
+    'models/gemini-2.0-flash-lite',  # Secondary: Cheaper/Faster
 ]
 
 def generate_business_insights(data_summary: dict, org_name: str) -> str:
     """
     Generates business insights using Gemini with automatic model fallback.
     """
-    if not api_key:
+    if not GEMINI_CLIENT:
         return "Error: Gemini API Key not configured."
 
     prompt = f"""
@@ -44,10 +43,10 @@ def generate_business_insights(data_summary: dict, org_name: str) -> str:
     for model_name in MODELS:
         try:
             print(f"Attempting generation with model: {model_name}")
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
-            
-            # Return pure insight text
+            response = GEMINI_CLIENT.models.generate_content(
+                model=model_name,
+                contents=prompt
+            )
             return response.text
             
         except Exception as e:

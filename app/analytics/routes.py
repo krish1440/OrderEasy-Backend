@@ -334,6 +334,166 @@ def fulfillment_gap(request: Request):
 
 
 # -------------------------------------------------
+# 🔄 CHURN VS RETENTION TREND
+# Returns monthly counts of New vs Returning customers
+# -------------------------------------------------
+@router.get("/churn-retention")
+def churn_retention(request: Request):
+    org = require_login(request)
+    orders = supabase.table("orders").select("receiver_name,date").eq("org", org).execute().data or []
+    
+    # Track the FIRST month we saw each customer
+    first_seen = {}
+    
+    # We need to process chronologically to get true "New" vs "Returning"
+    orders_sorted = sorted(orders, key=lambda x: x.get("date", ""))
+    
+    # Store aggregated data per month
+    monthly_stats = defaultdict(lambda: {"new": 0, "returning": set()})
+    
+    for o in orders_sorted:
+        cust = (o.get("receiver_name") or "Unknown").strip().title()
+        date_str = o.get("date")
+        if not date_str:
+            continue
+            
+        m_key = date_str[:7] # YYYY-MM
+        
+        if cust not in first_seen:
+            # First time we see this customer ever = New for this month
+            first_seen[cust] = m_key
+            monthly_stats[m_key]["new"] += 1
+        else:
+            # We've seen them before. If it's a DIFFERENT month than their first time, they are 'returning' this month
+            if first_seen[cust] != m_key:
+                monthly_stats[m_key]["returning"].add(cust)
+                
+    # Format for charting
+    result = []
+    for month in sorted(monthly_stats.keys()):
+        result.append({
+            "month": month,
+            "new": monthly_stats[month]["new"],
+            "returning": len(monthly_stats[month]["returning"])
+        })
+        
+    return result
+
+
+# -------------------------------------------------
+# 📈 AVERAGE ORDER VALUE (AOV) TRACKER
+# Returns the AOV per month
+# -------------------------------------------------
+@router.get("/aov-tracker")
+def aov_tracker(request: Request):
+    org = require_login(request)
+    orders = supabase.table("orders").select("date,total_amount_with_gst").eq("org", org).execute().data or []
+    
+    monthly_data = defaultdict(lambda: {"revenue": 0.0, "count": 0})
+    
+    for o in orders:
+        date_str = o.get("date")
+        amount = o.get("total_amount_with_gst", 0)
+        if not date_str or not amount:
+            continue
+            
+        m_key = date_str[:7]
+        monthly_data[m_key]["revenue"] += amount
+        monthly_data[m_key]["count"] += 1
+        
+    result = []
+    for month in sorted(monthly_data.keys()):
+        count = monthly_data[month]["count"]
+        revenue = monthly_data[month]["revenue"]
+        aov = round(revenue / count, 2) if count > 0 else 0
+        
+        result.append({
+            "month": month,
+            "aov": aov,
+            "revenue": round(revenue, 2),
+            "orders": count
+        })
+        
+    return result
+
+
+# -------------------------------------------------
+# 🚚 DELIVERY FRAGMENTATION RING
+# Returns distribution of 1-trip vs 2-trip vs 3+ trip orders
+# -------------------------------------------------
+@router.get("/delivery-fragmentation")
+def delivery_fragmentation(request: Request):
+    org = require_login(request)
+    
+    # We only care about orders that have at least some completed deliveries
+    deliveries = supabase.table("deliveries").select("order_id").eq("org", org).execute().data or []
+    
+    # Count deliveries per order
+    trip_counts = defaultdict(int)
+    for d in deliveries:
+        trip_counts[d["order_id"]] += 1
+        
+    # Group into buckets
+    buckets = {"1 Trip": 0, "2 Trips": 0, "3+ Trips": 0}
+    
+    for count in trip_counts.values():
+        if count == 1:
+            buckets["1 Trip"] += 1
+        elif count == 2:
+            buckets["2 Trips"] += 1
+        else:
+            buckets["3+ Trips"] += 1
+            
+    # Format for Recharts PieChart
+    result = [
+        {"name": "1 Trip", "value": buckets["1 Trip"]},
+        {"name": "2 Trips", "value": buckets["2 Trips"]},
+        {"name": "3+ Trips", "value": buckets["3+ Trips"]}
+    ]
+    
+    # Filter out empty buckets so the chart doesn't render 0-slices awkwardly
+    return [r for r in result if r["value"] > 0]
+
+
+# -------------------------------------------------
+# 🩸 REVENUE HELD HOSTAGE TRACKER
+# Returns unpaid units vs unpaid INR for active/pending orders
+# -------------------------------------------------
+@router.get("/revenue-held-hostage")
+def revenue_held_hostage(request: Request):
+    org = require_login(request)
+    
+    # Fetch orders where status is STILL pending, but they HAVE delivered something
+    orders = supabase.table("orders") \
+        .select("date,delivered_quantity,pending_amount") \
+        .eq("org", org) \
+        .eq("status", "Pending") \
+        .execute().data or []
+        
+    monthly_stats = defaultdict(lambda: {"unpaid_units": 0, "held_revenue": 0.0})
+    
+    for o in orders:
+        delivered_qty = o.get("delivered_quantity", 0)
+        pending_amt = o.get("pending_amount", 0.0)
+        date_str = o.get("date")
+        
+        # We only care if physical stock has left the building but we aren't paid
+        if delivered_qty > 0 and pending_amt > 0 and date_str:
+            m_key = date_str[:7] # YYYY-MM
+            monthly_stats[m_key]["unpaid_units"] += delivered_qty
+            monthly_stats[m_key]["held_revenue"] += pending_amt
+            
+    result = []
+    for month in sorted(monthly_stats.keys()):
+        result.append({
+            "month": month,
+            "unpaid_units": monthly_stats[month]["unpaid_units"],
+            "held_revenue": round(monthly_stats[month]["held_revenue"], 2)
+        })
+        
+    return result
+
+# -------------------------------------------------
 # 2️⃣ MONTHLY REVENUE TREND
 # -------------------------------------------------
 @router.get("/revenue/monthly")

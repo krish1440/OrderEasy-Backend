@@ -309,9 +309,9 @@ def delivery_heatmap(request: Request):
 def expected_delivery_schedule(request: Request):
     org = require_login(request)
     
-    # Fetch only PENDING orders
+    # Fetch only PENDING orders — also grab delivered_quantity so we can compute remaining
     orders = supabase.table("orders") \
-        .select("expected_delivery_date,quantity") \
+        .select("expected_delivery_date,quantity,delivered_quantity") \
         .eq("org", org) \
         .eq("status", "Pending") \
         .neq("expected_delivery_date", "None") \
@@ -319,9 +319,11 @@ def expected_delivery_schedule(request: Request):
         
     schedule = defaultdict(int)
     for o in orders:
-        # Standardize date format YYYY-MM-DD
         if o["expected_delivery_date"]:
             date_str = o["expected_delivery_date"].split("T")[0]
-            schedule[date_str] += o["quantity"]
+            # Only show units still left to be delivered
+            remaining = o["quantity"] - (o.get("delivered_quantity") or 0)
+            if remaining > 0:
+                schedule[date_str] += remaining
             
     return [{"date": k, "total_quantity": v} for k, v in schedule.items()]

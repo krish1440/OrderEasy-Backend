@@ -220,6 +220,120 @@ def dashboard_summary(request: Request):
 
 
 # -------------------------------------------------
+# 🫧 PRODUCT BUBBLE CHART DATA
+# Returns per-product: revenue, quantity, order count
+# -------------------------------------------------
+@router.get("/dashboard/product-bubble")
+def product_bubble_data(request: Request):
+    org = require_login(request)
+    orders = supabase.table("orders").select("product,quantity,total_amount_with_gst").eq("org", org).execute().data or []
+
+    stats: dict = defaultdict(lambda: {"quantity": 0, "revenue": 0.0, "orders": 0})
+    for o in orders:
+        p = (o.get("product") or "Unknown").strip().title()
+        stats[p]["quantity"] += o.get("quantity", 0)
+        stats[p]["revenue"] += round(o.get("total_amount_with_gst", 0), 2)
+        stats[p]["orders"] += 1
+
+    # Return top 15 products sorted by revenue
+    top = sorted(stats.items(), key=lambda x: x[1]["revenue"], reverse=True)[:15]
+    return [{"name": k, **v} for k, v in top]
+
+
+# -------------------------------------------------
+# 📋 RECENT ACTIVITY FEED
+# Returns last 10 orders with key display fields
+# -------------------------------------------------
+@router.get("/dashboard/recent-activity")
+def recent_activity(request: Request):
+    org = require_login(request)
+    orders = supabase.table("orders") \
+        .select("order_id,product,quantity,total_amount_with_gst,status,pending_amount,receiver_name,date") \
+        .eq("org", org) \
+        .order("date", desc=True) \
+        .limit(10) \
+        .execute().data or []
+
+    result = []
+    for o in orders:
+        total = o.get("total_amount_with_gst", 0)
+        pending = o.get("pending_amount", 0)
+        
+        # Calculate payment status dynamically
+        if pending <= 0:
+            payment_status = "Paid"
+        elif pending < total:
+            payment_status = "Partial"
+        else:
+            payment_status = "Pending"
+
+        result.append({
+            "id": str(o.get("order_id", "")),
+            "product": (o.get("product") or "—").strip().title(),
+            "receiver": (o.get("receiver_name") or "—").strip().title(),
+            "amount": round(total, 2),
+            "quantity": o.get("quantity", 0),
+            "status": o.get("status", "Pending"),
+            "payment_status": payment_status,
+            "date": o.get("date", ""),
+        })
+
+    return result
+
+
+# -------------------------------------------------
+# ⏱️ FULFILLMENT GAP SCATTER PLOT
+# Returns recent deliveries with days_gap (Expected vs Actual)
+# -------------------------------------------------
+@router.get("/dashboard/fulfillment-gap")
+def fulfillment_gap(request: Request):
+    org = require_login(request)
+    from datetime import datetime
+    
+    # We need both order's expected date and delivery's actual date
+    orders = supabase.table("orders").select("order_id,product,expected_delivery_date").eq("org", org).execute().data or []
+    deliveries = supabase.table("deliveries").select("order_id,delivery_date").eq("org", org).execute().data or []
+    
+    # Map order_id to order info
+    order_map = {o["order_id"]: o for o in orders if o.get("expected_delivery_date")}
+    
+    result = []
+    # To keep the chart readable, we'll limit to the 50 most recent deliveries
+    deliveries_sorted = sorted(deliveries, key=lambda d: d.get("delivery_date", ""), reverse=True)[:50]
+    
+    for d in deliveries_sorted:
+        o_id = d.get("order_id")
+        actual_date_str = d.get("delivery_date")
+        
+        if not actual_date_str or o_id not in order_map:
+            continue
+            
+        expected_date_str = order_map[o_id].get("expected_delivery_date")
+        product_name = (order_map[o_id].get("product") or "Unknown").strip().title()
+        
+        try:
+            actual = datetime.strptime(actual_date_str, "%Y-%m-%d").date()
+            expected = datetime.strptime(expected_date_str, "%Y-%m-%d").date()
+            
+            # days_gap: +ve means late (actual > expected), -ve means early (actual < expected)
+            days_gap = (actual - expected).days
+            
+            result.append({
+                "order_id": o_id,
+                "product": product_name,
+                "expected": expected_date_str,
+                "actual": actual_date_str,
+                "days_gap": days_gap
+            })
+        except ValueError:
+            continue
+            
+    # Sort chronologically by actual delivery date for the UI timeline
+    result.sort(key=lambda x: x["actual"])
+    return result
+
+
+# -------------------------------------------------
 # 2️⃣ MONTHLY REVENUE TREND
 # -------------------------------------------------
 @router.get("/revenue/monthly")

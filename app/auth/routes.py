@@ -187,7 +187,7 @@ def get_account_info(request: Request):
     username = request.session.get("username")
 
     user = supabase.table("users") \
-        .select("username, organization, is_admin, email") \
+        .select("username, organization, is_admin, email, logo_url") \
         .eq("username", username) \
         .execute().data
 
@@ -198,7 +198,37 @@ def get_account_info(request: Request):
 
 
 # -------------------------------------------------
-# 5️⃣ CHANGE PASSWORD
+# 5️⃣ UPDATE LOGO
+# -------------------------------------------------
+class UpdateLogoSchema(BaseModel):
+    logo_url: str
+
+@router.put("/update-logo")
+def update_logo(request: Request, body: UpdateLogoSchema):
+    """
+    Updates the organization's custom logo URL.
+    """
+    org = require_login(request)
+    
+    if request.session.get("is_admin"):
+        raise HTTPException(400, "Admin account cannot have a custom logo")
+
+    username = request.session.get("username")
+
+    try:
+        supabase.table("users").update({
+            "logo_url": body.logo_url
+        }).eq("username", username).execute()
+        
+        logger.info(f"Logo updated for organization: {org}")
+        return {"message": "Logo updated successfully", "logo_url": body.logo_url}
+    except Exception as e:
+        logger.error(f"Failed to update logo for {org}: {str(e)}")
+        raise HTTPException(500, "Failed to update logo")
+
+
+# -------------------------------------------------
+# 6️⃣ CHANGE PASSWORD
 # -------------------------------------------------
 @router.post("/change-password")
 def change_password(
@@ -241,8 +271,89 @@ def change_password(
         "password": hash_password(new_password)
     }).eq("username", username).execute()
 
-    logger.info(f"Password changed for org: {org}")
-    return {"message": "Password changed successfully"}
+    return {"message": "Password updated successfully"}
+
+
+# -------------------------------------------------
+# 7️⃣ FORGOT PASSWORD
+# -------------------------------------------------
+class ForgotPasswordSchema(BaseModel):
+    email: str
+    redirect_to: str
+
+@router.post("/forgot-password")
+def forgot_password(body: ForgotPasswordSchema):
+    """
+    Sends a password reset email using Supabase Auth.
+    Expects redirect_to to point back to the frontend (e.g., http://localhost:3000/#/reset-password).
+    """
+    try:
+        # 1. Check if the email exists in our local users table
+        user = supabase.table("users").select("email").eq("email", body.email).execute().data
+        if not user:
+            # We still return success to prevent email enumeration attacks
+            return {"message": "If an account with that email exists, we have sent a reset link"}
+
+        # 2. Call Supabase reset password endpoint
+        response = supabase.auth.reset_password_email(
+            body.email,
+            options={"redirect_to": f"{body.redirect_to}"}
+        )
+        
+        logger.info(f"Password reset requested for {body.email}")
+        return {"message": "If an account with that email exists, we have sent a reset link"}
+    except Exception as e:
+        logger.error(f"Failed to process forgot password for {body.email}: {str(e)}")
+        # Generic error message to prevent enumeration
+        return {"message": "If an account with that email exists, we have sent a reset link"}
+
+
+# -------------------------------------------------
+# 8️⃣ RESET PASSWORD (FINALIZE)
+# -------------------------------------------------
+class ResetPasswordSchema(BaseModel):
+    new_password: str
+    access_token: str
+
+@router.post("/reset-password")
+def execute_reset_password(body: ResetPasswordSchema):
+    """
+    Executes the password reset using the token from the email.
+    """
+    try:
+        # Ensure password is valid length
+        try:
+            validate_password(body.new_password)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
+        # 1. Update the user password in Supabase Auth using their session
+        # We need to set the session using the access token first
+        supabase.auth.set_session(body.access_token, body.access_token) # Refresh token not strictly needed for this one-off
+        
+        auth_response = supabase.auth.update_user({
+            "password": body.new_password
+        })
+
+        if not auth_response.user:
+            raise Exception("Failed to update password in Auth provider")
+
+        # 2. Update our custom `users` table password field
+        # The auth update was successful, so we sync our local password standard
+        user_email = auth_response.user.email
+        supabase.table("users").update({
+            "password": hash_password(body.new_password)
+        }).eq("email", user_email).execute()
+
+        logger.info(f"Password successfully reset for {user_email}")
+        
+        # 3. Log them out so they have to sign in with new credentials
+        supabase.auth.sign_out()
+        
+        return {"message": "Password successfully reset"}
+    except Exception as e:
+        logger.error(f"Reset password error: {str(e)}")
+        raise HTTPException(400, "Invalid or expired reset token, or password update failed.")
 
 
 # -------------------------------------------------

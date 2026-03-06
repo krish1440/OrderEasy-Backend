@@ -98,7 +98,8 @@ def add_delivery(payload: dict, request: Request):
         "url": payload.get("url"),
         "file_name": payload.get("file_name"),
         "upload_date": payload.get("upload_date"),
-        "resource_type": payload.get("resource_type")
+        "resource_type": payload.get("resource_type"),
+        "custom_data": payload.get("custom_data", {})
     }
 
     # Insert delivery

@@ -93,7 +93,8 @@ def create_order(payload: dict, request: Request):
         "status": "Completed" if pending_amount == 0 else "Pending",
         "created_by": org,
         "delivered_quantity": 0,
-        "url": payload.get("url")
+        "url": payload.get("url"),
+        "custom_data": payload.get("custom_data", {})
     }
 
     try:
@@ -225,7 +226,8 @@ def update_order(order_id: int, payload: dict, request: Request):
         "total_amount_with_gst": total_with_gst,
         "pending_amount": pending_amount,
         "status": "Completed" if pending_amount == 0 else "Pending",
-        "url": payload.get("url", order.get("url"))
+        "url": payload.get("url", order.get("url")),
+        "custom_data": payload.get("custom_data", order.get("custom_data", {}))
     }
 
     supabase.table("orders") \

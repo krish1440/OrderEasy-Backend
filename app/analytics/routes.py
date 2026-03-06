@@ -7,6 +7,14 @@ from collections import defaultdict
 import datetime
 from . import forecasting, ai
 from pydantic import BaseModel
+from google import genai as google_genai
+import os
+
+# Read Gemini API key securely from environment (.env file)
+_gemini_key = os.environ.get("GEMINI_API_KEY")
+if not _gemini_key:
+    raise RuntimeError("GEMINI_API_KEY not set in environment variables.")
+GEMINI_CLIENT = google_genai.Client(api_key=_gemini_key)
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -14,10 +22,162 @@ logger = get_logger(__name__)
 class InsightsRequest(BaseModel):
     summary: dict
 
-# @router.post("/ai-insights")
-# async def get_ai_insights(req: Request, body: InsightsRequest):
-#     org = require_login(req)
-#     return {"insights": ai.generate_business_insights(body.summary, org)}
+# -------------------------------------------------
+# 🤖 AI EXECUTIVE SUMMARY (GEMINI) - Self-contained
+# Gathers ALL chart data directly to feed Gemini
+# -------------------------------------------------
+@router.get("/ai-summary")
+def generate_ai_summary(request: Request):
+    """
+    Self-contained AI summary: fetches all analytics data directly from DB
+    and passes the full picture to Gemini for a rich, structured report.
+    """
+    org = require_login(request)
+    import time
+
+    # ---- Gather ALL data from DB ----
+    try:
+        orders = supabase.table("orders").select("*").eq("org", org).execute().data or []
+        deliveries = supabase.table("deliveries").select("*").eq("org", org).execute().data or []
+    except Exception as e:
+        logger.error(f"DB fetch failed for {org}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch analytics data.")
+
+    # High-level order metrics
+    total_orders = len(orders)
+    completed = sum(1 for o in orders if o.get("status") == "Completed")
+    pending_orders = total_orders - completed
+    total_revenue = sum(o.get("total_amount_with_gst", 0) for o in orders)
+    avg_order_value = round(total_revenue / total_orders, 2) if total_orders else 0
+    pending_payments = sum(o.get("total_amount_with_gst", 0) for o in orders if o.get("payment_status") in ["Pending", "Partial", None, ""])
+
+    # Yearly revenue breakdown
+    yearly_rev: dict = defaultdict(float)
+    for o in orders:
+        if o.get("date"):
+            yearly_rev[o["date"][:4]] += o.get("total_amount_with_gst", 0)
+    yearly_rev = {k: round(v, 2) for k, v in sorted(yearly_rev.items())}
+
+    # Monthly revenue trend (last 12 months)
+    monthly_rev: dict = defaultdict(float)
+    for o in orders:
+        if o.get("date"):
+            monthly_rev[o["date"][:7]] += o.get("total_amount_with_gst", 0)
+    sorted_months = sorted(monthly_rev.keys())[-12:]
+    monthly_rev_last12 = {m: round(monthly_rev[m], 2) for m in sorted_months}
+
+    # MoM growth rate (last 6 months)
+    months_list = sorted(monthly_rev.keys())
+    mom_growth = {}
+    for i in range(1, len(months_list)):
+        prev = monthly_rev[months_list[i-1]]
+        curr = monthly_rev[months_list[i]]
+        if prev > 0:
+            mom_growth[months_list[i]] = round(((curr - prev) / prev) * 100, 1)
+    mom_last6 = dict(list(mom_growth.items())[-6:])
+
+    # Top 5 products by revenue and quantity
+    product_stats: dict = defaultdict(lambda: {"quantity": 0, "revenue": 0.0, "orders": 0})
+    for o in orders:
+        if o.get("product"):
+            p = o["product"].strip().title()
+            product_stats[p]["quantity"] += o.get("quantity", 0)
+            product_stats[p]["revenue"] += o.get("total_amount_with_gst", 0)
+            product_stats[p]["orders"] += 1
+    top_products = sorted(product_stats.items(), key=lambda x: x[1]["revenue"], reverse=True)[:5]
+    top_products_data = [{"name": k, **v} for k, v in top_products]
+
+    # Top 5 customers (receivers) by revenue
+    cust_rev: dict = defaultdict(float)
+    cust_orders: dict = defaultdict(int)
+    for o in orders:
+        r = o.get("receiver_name", "Unknown")
+        cust_rev[r] += o.get("total_amount_with_gst", 0)
+        cust_orders[r] += 1
+    top_customers = sorted(cust_rev.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_customers_data = [{"name": k, "revenue": round(v, 2), "orders": cust_orders[k]} for k, v in top_customers]
+
+    # Delivery performance
+    total_deliveries = len(deliveries)
+    total_qty_delivered = sum(d.get("delivery_quantity", 0) for d in deliveries)
+    total_delivery_amount = sum(d.get("delivery_amount", 0) for d in deliveries)
+
+    # ---- Build structured prompt ----
+    prompt = f"""
+You are a senior business intelligence analyst preparing a formal executive briefing for the leadership team of an organization called **{org}**.
+
+Based on the comprehensive operational data provided below, produce a well-structured, professional AI Insights Report using clear headings and bullet points. Your response should be 100% data-driven, specific (use exact numbers), and actionable.
+
+=== ORGANIZATION DATA ===
+
+**ORDER OVERVIEW**
+- Total Orders: {total_orders} | Completed: {completed} | Pending: {pending_orders}
+- Total Revenue (All Time): ₹{total_revenue:,.2f}
+- Average Order Value: ₹{avg_order_value:,.2f}
+- Outstanding Payments (Pending/Partial): ₹{pending_payments:,.2f}
+
+**YEARLY REVENUE BREAKDOWN**
+{yearly_rev}
+
+**MONTHLY REVENUE TREND (Last 12 Months)**
+{monthly_rev_last12}
+
+**MONTH-OVER-MONTH REVENUE GROWTH (Last 6 Months, %)**
+{mom_last6}
+
+**TOP 5 PRODUCTS BY REVENUE**
+{top_products_data}
+
+**TOP 5 CUSTOMERS BY REVENUE**
+{top_customers_data}
+
+**DELIVERY OPERATIONS**
+- Total Deliveries: {total_deliveries}
+- Total Units Delivered: {total_qty_delivered:,}
+- Total Delivery Amount Collected: ₹{total_delivery_amount:,.2f}
+
+=== OUTPUT FORMAT (STRICTLY FOLLOW THIS STRUCTURE) ===
+
+## 📊 Business Overview
+A 2–3 sentence summary of the overall business health using the high-level metrics.
+
+## 💹 Revenue Performance
+- Bullet points analysing revenue trends, year-over-year comparisons, and monthly growth/decline patterns.
+- Call out specific months with significant spikes or drops with actual numbers.
+
+## 🏆 Top Performers
+- Bullet points for top products: which product drives the most revenue, which has highest volume.
+- Bullet points for top customers: who are the highest-value clients.
+
+## ⚠️ Areas of Concern
+- Bullet points highlighting risks: pending payments amount, declining months, fulfillment gaps, etc.
+
+## 🚀 Strategic Recommendations
+- 3 highly specific, actionable recommendations based on this exact data to improve revenue or operations.
+
+Use **bold** for all specific figures (revenue amounts, product names, customer names, percentages). Be concise but insightful. Avoid generic advice.
+"""
+
+    # Retry with exponential backoff for rate limit resilience
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = GEMINI_CLIENT.models.generate_content(
+                model='models/gemini-2.5-flash',
+                contents=prompt
+            )
+            return {"summary": response.text}
+        except Exception as e:
+            err_str = str(e)
+            if '429' in err_str and attempt < max_retries - 1:
+                wait_time = (2 ** attempt) * 5
+                logger.warning(f"Gemini rate limit hit for {org}, retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                logger.error(f"Gemini API Error for {org}: {err_str}")
+                raise HTTPException(status_code=503, detail="AI insights temporarily unavailable. Please try again in a moment.")
+
+
 
 # -------------------------------------------------
 # Helper: Extract YYYY-MM from date string

@@ -11,3 +11,4 @@ openpyxl
 python-multipart
 itsdangerous
 google-genai
+reportlab

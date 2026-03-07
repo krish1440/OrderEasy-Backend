@@ -22,6 +22,7 @@ from reportlab.platypus import (
 )
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 
+# Latest production sync: 2026-03-07
 router = APIRouter()
 logger = get_logger(__name__)
 

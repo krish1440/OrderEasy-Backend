@@ -33,6 +33,11 @@ logger = get_logger(__name__)
 # CORS Middleware (Frontend Access)
 # -------------------------------------------------
 # Must exactly match the browser's "Origin" header
+import os
+
+# Determine if running in production (Render)
+is_production = os.getenv("RENDER") or False
+
 # Must exactly match the browser's "Origin" header
 origins = [
     "http://localhost:3000",
@@ -45,23 +50,22 @@ origins = [
     "https://order-easy-blond.vercel.app/",
 ]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    # allow_origin_regex="https?://.*", # Disabled in favor of specific origins for security
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_kwargs = {
+    "allow_origins": origins,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+
+# Allow local IP connections (e.g. 192.168.x.x for mobile testing) only in development
+if not is_production:
+    cors_kwargs["allow_origin_regex"] = r"^http://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$"
+
+app.add_middleware(CORSMiddleware, **cors_kwargs)
 
 # -------------------------------------------------
 # Session Middleware
 # -------------------------------------------------
-import os
-
-# Determine if running in production (Render)
-is_production = os.getenv("RENDER") or False
-
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,

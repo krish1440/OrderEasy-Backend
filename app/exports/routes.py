@@ -10,6 +10,7 @@ import io
 import zipfile
 import requests as http_requests
 from datetime import date, datetime
+from urllib.parse import unquote
 
 # ReportLab for PDF
 from reportlab.lib.pagesizes import A4, landscape
@@ -461,6 +462,8 @@ def export_deliveries_for_order(order_id: int, request: Request):
 @router.get("/customer-statement")
 def export_customer_statement(request: Request, customer: str):
     org = require_login(request)
+    customer = unquote(customer)
+    logger.info(f"Exporting Excel statement for customer: {customer}")
     orders = supabase.table("orders").select("*") \
         .eq("org", org).eq("receiver_name", customer) \
         .order("date", desc=True).execute().data or []
@@ -485,6 +488,8 @@ def export_customer_statement(request: Request, customer: str):
 @router.get("/customer-statement/pdf")
 def export_customer_statement_pdf(request: Request, customer: str):
     org = require_login(request)
+    customer = unquote(customer)
+    logger.info(f"Exporting PDF statement for customer: {customer}")
     orders = supabase.table("orders") \
         .select("order_id,date,product,quantity,total_amount_with_gst,advance_payment,pending_amount,status,expected_delivery_date") \
         .eq("org", org).eq("receiver_name", customer) \

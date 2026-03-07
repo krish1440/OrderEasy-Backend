@@ -295,9 +295,9 @@ def forgot_password(body: ForgotPasswordSchema):
             return {"message": "If an account with that email exists, we have sent a reset link"}
 
         # 2. Call Supabase reset password endpoint
-        response = supabase.auth.reset_password_email(
+        response = supabase.auth.reset_password_for_email(
             body.email,
-            options={"redirect_to": f"{body.redirect_to}"}
+            options={"redirect_to": body.redirect_to}
         )
         
         logger.info(f"Password reset requested for {body.email}")

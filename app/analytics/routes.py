@@ -242,20 +242,47 @@ def product_bubble_data(request: Request):
 
 # -------------------------------------------------
 # 📋 RECENT ACTIVITY FEED
-# Returns last 10 orders with key display fields
+# Returns a minimum of 5 orders (pending first), but can return more if there are more pending orders.
+# - If pending orders >= 5: return all pending orders (payment or delivery pending).
+# - If pending orders < 5: append recent completed orders to reach 5 total.
 # -------------------------------------------------
 @router.get("/dashboard/recent-activity")
 def recent_activity(request: Request):
+    """Return recent activity orders.
+
+    Rules:
+    1) If there are >= 5 pending orders (payment or delivery pending), return *all* pending orders.
+    2) If there are < 5 pending orders, return all pending orders first, then fill up to 5 items with the most recent completed orders.
+
+    The response is a list of order objects (same schema as before), so the frontend scroll component can remain unchanged.
+    """
+
     org = require_login(request)
-    orders = supabase.table("orders") \
-        .select("order_id,product,quantity,total_amount_with_gst,status,pending_amount,receiver_name,date") \
+
+    # Pending can mean payment pending or delivery pending; the order status is set to "Pending" when either is true.
+    pending_orders = supabase.table("orders") \
+        .select("order_id,product,quantity,delivered_quantity,total_amount_with_gst,status,pending_amount,receiver_name,date") \
         .eq("org", org) \
+        .eq("status", "Pending") \
         .order("date", desc=True) \
-        .limit(10) \
         .execute().data or []
 
+    result_orders = list(pending_orders)
+
+    # Ensure we return at least 5 items by adding recent completed orders if needed.
+    if len(result_orders) < 5:
+        needed = 5 - len(result_orders)
+        completed_orders = supabase.table("orders") \
+            .select("order_id,product,quantity,delivered_quantity,total_amount_with_gst,status,pending_amount,receiver_name,date") \
+            .eq("org", org) \
+            .eq("status", "Completed") \
+            .order("date", desc=True) \
+            .limit(needed) \
+            .execute().data or []
+        result_orders.extend(completed_orders)
+
     result = []
-    for o in orders:
+    for o in result_orders:
         total = o.get("total_amount_with_gst", 0)
         pending = o.get("pending_amount", 0)
         
@@ -273,6 +300,8 @@ def recent_activity(request: Request):
             "receiver": (o.get("receiver_name") or "—").strip().title(),
             "amount": round(total, 2),
             "quantity": o.get("quantity", 0),
+            "delivered_quantity": o.get("delivered_quantity", 0),
+            "pending_amount": pending,
             "status": o.get("status", "Pending"),
             "payment_status": payment_status,
             "date": o.get("date", ""),

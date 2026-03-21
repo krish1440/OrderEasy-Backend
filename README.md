@@ -44,12 +44,14 @@ Access the interactive API docs directly on Render:
 
 ---
 
-## 👥 The Backend Team
+## 👥 The OrderEazy Team
 
-| Contributor | Role | GitHub ID |
+| Contributor | Primary Role | GitHub ID |
 | :--- | :--- | :--- |
-| **dt** | Backend Architect & Core Security | [@dhruvin2303](https://github.com/dhruvin2303) |
+| **dt** | Backend Architect & Security | [@dhruvin2303](https://github.com/dhruvin2303) |
 | **Krish** | AI Integration & Analytics Lead | [@krish1440](https://github.com/krish1440) |
+| **Harsh** | Visual BI & All Chart Features | [@harshdholakiya21](https://github.com/harshdholakiya21) |
+| **Raj** | UI/UX & Application Interactions | [@Raj-Kapuriya](https://github.com/Raj-Kapuriya) |
 
 ---
 

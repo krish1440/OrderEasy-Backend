@@ -1,6 +1,6 @@
 from app.core.security import hash_password
 
-plain_password = "krish@8252"   # 🔴 change this password
+plain_password = "krish@8252"
 
 hashed = hash_password(plain_password)
 

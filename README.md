@@ -73,4 +73,3 @@ Access the interactive API docs directly on Render:
    ```
 
 ---
-Developed with ❤️ for the **Modern Business Ecosystem**.

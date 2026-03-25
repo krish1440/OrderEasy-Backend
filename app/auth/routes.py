@@ -206,9 +206,21 @@ def logout(request: Request) -> dict:
 # 4️⃣ GET ACCOUNT INFO
 # -------------------------------------------------
 @router.get("/me")
-def get_account_info(request: Request):
+def get_account_info(request: Request) -> dict:
     """
-    Returns logged-in account details.
+    Retrieves the profile and organization details for the logged-in user.
+    
+    Fetches comprehensive information including organization name, email, 
+    and custom logo URL from the local database.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: The account profile data.
+        
+    Raises:
+        HTTPException: If the user is not found or not logged in.
     """
 
     org = require_login(request)
@@ -245,9 +257,22 @@ class UpdateLogoSchema(BaseModel):
 
 
 @router.put("/update-logo")
-def update_logo(request: Request, body: UpdateLogoSchema):
+def update_logo(request: Request, body: UpdateLogoSchema) -> dict:
     """
-    Updates the organization's custom logo URL.
+    Updates the custom logo URL for the organization.
+    
+    Allows organizations to personalize their dashboard by providing a 
+    valid image URL (typically from Cloudinary).
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        body (UpdateLogoSchema): The new logo URL.
+        
+    Returns:
+        dict: A success message and the updated logo URL.
+        
+    Raises:
+        HTTPException: If the user is an admin or update fails.
     """
     org = require_login(request)
 

@@ -27,10 +27,23 @@ class InsightsRequest(BaseModel):
 # Gathers ALL chart data directly to feed Gemini
 # -------------------------------------------------
 @router.get("/ai-summary")
-def generate_ai_summary(request: Request):
+def generate_ai_summary(request: Request) -> dict:
     """
-    Self-contained AI summary: fetches all analytics data directly from DB
-    and passes the full picture to Gemini for a rich, structured report.
+    Generates a comprehensive AI-driven executive summary using Gemini.
+    
+    This function fetches all operational data (orders, deliveries) for the 
+    organization, processes key performance indicators (KPIs), and constructs 
+    a detailed prompt for the Gemini AI model to generate a structured 
+    business intelligence report.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A dictionary containing the generated markdown summary.
+        
+    Raises:
+        HTTPException: If data fetching or AI generation fails.
     """
     org = require_login(request)
     import time
@@ -197,10 +210,16 @@ Use **bold** for all specific figures (revenue amounts, product names, customer 
                 )
 
 
-# -------------------------------------------------
-# Helper: Extract YYYY-MM from date string
-# -------------------------------------------------
 def month_key(date_str: str) -> str:
+    """
+    Extracts the YYYY-MM month key from a standard date string.
+    
+    Args:
+        date_str (str): A date string in YYYY-MM-DD format.
+        
+    Returns:
+        str: The extracted YYYY-MM string.
+    """
     return date_str[:7]  # assuming YYYY-MM-DD
 
 
@@ -208,9 +227,18 @@ def month_key(date_str: str) -> str:
 # 1️⃣ DASHBOARD SUMMARY
 # -------------------------------------------------
 @router.get("/summary")
-def dashboard_summary(request: Request):
+def dashboard_summary(request: Request) -> dict:
     """
-    High-level dashboard metrics.
+    Calculates high-level metrics for the main dashboard overview.
+    
+    Computes total orders, shipment completion status, and total units 
+    delivered to give an immediate pulse of business operations.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A collection of top-level metrics.
     """
     org = require_login(request)
 

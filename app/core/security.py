@@ -59,9 +59,18 @@ def hash_password(password: str) -> str:
 # -------------------------------------------------
 def verify_password(password: str, hashed_password: str) -> bool:
     """
-    Verifies plain password against stored hash.
-    Never crashes the application.
-    Returns False for any invalid / corrupted password.
+    Verifies a plain-text password against a stored bcrypt hash.
+    
+    Includes security guards to handle legacy or corrupted hashes gracefully 
+    without causing application downtime. Returns a boolean indicating 
+    verification success.
+    
+    Args:
+        password (str): The plain-text password to verify.
+        hashed_password (str): The stored bcrypt hash string.
+        
+    Returns:
+        bool: True if the password matches the hash, False otherwise.
     """
 
     # Guard against empty / invalid stored values

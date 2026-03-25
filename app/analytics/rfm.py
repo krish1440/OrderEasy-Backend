@@ -68,8 +68,11 @@ def rfm_segmentation(request: Request) -> dict:
     today = df["date"].max()
 
     # -------------------------------------------------
-    # Compute R, F, M
+    # 2. Compute Recency, Frequency, and Monetary (RFM)
     # -------------------------------------------------
+    # Recency: Days since last order
+    # Frequency: Total order count
+    # Monetary: Total revenue with GST
     rfm = df.groupby("receiver_name").agg(
         {
             "date": lambda x: (today - x.max()).days,

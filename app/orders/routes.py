@@ -10,7 +10,21 @@ logger = get_logger(__name__)
 # -------------------------------------------------
 # Helper: Calculate Order Amounts
 # -------------------------------------------------
-def calculate_amounts(quantity: int, price: float, gst: float, advance: float):
+def calculate_amounts(
+    quantity: int, price: float, gst: float, advance: float
+) -> tuple[float, float, float]:
+    """
+    Calculates essential order amounts including basic price, total with GST, and pending balance.
+
+    Args:
+        quantity: The number of items in the order.
+        price: The price per unit of the product.
+        gst: The GST percentage to apply.
+        advance: The advance payment received from the customer.
+
+    Returns:
+        A tuple containing (basic_price, total_with_gst, pending_amount).
+    """
     basic_price = quantity * price
     total_with_gst = basic_price + (basic_price * gst / 100)
     pending_amount = total_with_gst - advance
@@ -21,6 +35,15 @@ def calculate_amounts(quantity: int, price: float, gst: float, advance: float):
 # Helper: Get next order_id per org
 # -------------------------------------------------
 def get_next_order_id(org: str) -> int:
+    """
+    Retrieves the next sequential order ID for a specific organization.
+
+    Args:
+        org: The organization's unique identifier.
+
+    Returns:
+        The next integer order ID (starting from 1).
+    """
     res = (
         supabase.table("orders")
         .select("order_id")

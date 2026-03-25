@@ -1,11 +1,9 @@
-
 from fastapi import APIRouter, Request, HTTPException
 from app.core.supabase import supabase
 from app.core.session import require_login
 from app.core.logger import get_logger
 from collections import defaultdict
 import datetime
-from . import forecasting, ai
 from pydantic import BaseModel
 from google import genai as google_genai
 import os
@@ -19,8 +17,10 @@ GEMINI_CLIENT = google_genai.Client(api_key=_gemini_key)
 router = APIRouter()
 logger = get_logger(__name__)
 
+
 class InsightsRequest(BaseModel):
     summary: dict
+
 
 # -------------------------------------------------
 # 🤖 AI EXECUTIVE SUMMARY (GEMINI) - Self-contained
@@ -37,8 +37,12 @@ def generate_ai_summary(request: Request):
 
     # ---- Gather ALL data from DB ----
     try:
-        orders = supabase.table("orders").select("*").eq("org", org).execute().data or []
-        deliveries = supabase.table("deliveries").select("*").eq("org", org).execute().data or []
+        orders = (
+            supabase.table("orders").select("*").eq("org", org).execute().data or []
+        )
+        deliveries = (
+            supabase.table("deliveries").select("*").eq("org", org).execute().data or []
+        )
     except Exception as e:
         logger.error(f"DB fetch failed for {org}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch analytics data.")
@@ -49,7 +53,11 @@ def generate_ai_summary(request: Request):
     pending_orders = total_orders - completed
     total_revenue = sum(o.get("total_amount_with_gst", 0) for o in orders)
     avg_order_value = round(total_revenue / total_orders, 2) if total_orders else 0
-    pending_payments = sum(o.get("total_amount_with_gst", 0) for o in orders if o.get("payment_status") in ["Pending", "Partial", None, ""])
+    pending_payments = sum(
+        o.get("total_amount_with_gst", 0)
+        for o in orders
+        if o.get("payment_status") in ["Pending", "Partial", None, ""]
+    )
 
     # Yearly revenue breakdown
     yearly_rev: dict = defaultdict(float)
@@ -70,21 +78,25 @@ def generate_ai_summary(request: Request):
     months_list = sorted(monthly_rev.keys())
     mom_growth = {}
     for i in range(1, len(months_list)):
-        prev = monthly_rev[months_list[i-1]]
+        prev = monthly_rev[months_list[i - 1]]
         curr = monthly_rev[months_list[i]]
         if prev > 0:
             mom_growth[months_list[i]] = round(((curr - prev) / prev) * 100, 1)
     mom_last6 = dict(list(mom_growth.items())[-6:])
 
     # Top 5 products by revenue and quantity
-    product_stats: dict = defaultdict(lambda: {"quantity": 0, "revenue": 0.0, "orders": 0})
+    product_stats: dict = defaultdict(
+        lambda: {"quantity": 0, "revenue": 0.0, "orders": 0}
+    )
     for o in orders:
         if o.get("product"):
             p = o["product"].strip().title()
             product_stats[p]["quantity"] += o.get("quantity", 0)
             product_stats[p]["revenue"] += o.get("total_amount_with_gst", 0)
             product_stats[p]["orders"] += 1
-    top_products = sorted(product_stats.items(), key=lambda x: x[1]["revenue"], reverse=True)[:5]
+    top_products = sorted(
+        product_stats.items(), key=lambda x: x[1]["revenue"], reverse=True
+    )[:5]
     top_products_data = [{"name": k, **v} for k, v in top_products]
 
     # Top 5 customers (receivers) by revenue
@@ -95,7 +107,10 @@ def generate_ai_summary(request: Request):
         cust_rev[r] += o.get("total_amount_with_gst", 0)
         cust_orders[r] += 1
     top_customers = sorted(cust_rev.items(), key=lambda x: x[1], reverse=True)[:5]
-    top_customers_data = [{"name": k, "revenue": round(v, 2), "orders": cust_orders[k]} for k, v in top_customers]
+    top_customers_data = [
+        {"name": k, "revenue": round(v, 2), "orders": cust_orders[k]}
+        for k, v in top_customers
+    ]
 
     # Delivery performance
     total_deliveries = len(deliveries)
@@ -163,20 +178,23 @@ Use **bold** for all specific figures (revenue amounts, product names, customer 
     for attempt in range(max_retries):
         try:
             response = GEMINI_CLIENT.models.generate_content(
-                model='models/gemini-2.5-flash',
-                contents=prompt
+                model="models/gemini-2.5-flash", contents=prompt
             )
             return {"summary": response.text}
         except Exception as e:
             err_str = str(e)
-            if '429' in err_str and attempt < max_retries - 1:
-                wait_time = (2 ** attempt) * 5
-                logger.warning(f"Gemini rate limit hit for {org}, retrying in {wait_time}s...")
+            if "429" in err_str and attempt < max_retries - 1:
+                wait_time = (2**attempt) * 5
+                logger.warning(
+                    f"Gemini rate limit hit for {org}, retrying in {wait_time}s..."
+                )
                 time.sleep(wait_time)
             else:
                 logger.error(f"Gemini API Error for {org}: {err_str}")
-                raise HTTPException(status_code=503, detail="AI insights temporarily unavailable. Please try again in a moment.")
-
+                raise HTTPException(
+                    status_code=503,
+                    detail="AI insights temporarily unavailable. Please try again in a moment.",
+                )
 
 
 # -------------------------------------------------
@@ -196,15 +214,9 @@ def dashboard_summary(request: Request):
     """
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("*") \
-        .eq("org", org) \
-        .execute().data
+    orders = supabase.table("orders").select("*").eq("org", org).execute().data
 
-    deliveries = supabase.table("deliveries") \
-        .select("*") \
-        .eq("org", org) \
-        .execute().data
+    deliveries = supabase.table("deliveries").select("*").eq("org", org).execute().data
 
     total_orders = len(orders)
     completed_orders = sum(1 for o in orders if o["status"] == "Completed")
@@ -215,7 +227,7 @@ def dashboard_summary(request: Request):
         "total_orders": total_orders,
         "completed_orders": completed_orders,
         "pending_orders": pending_orders,
-        "total_units_delivered": total_units_delivered
+        "total_units_delivered": total_units_delivered,
     }
 
 
@@ -226,7 +238,14 @@ def dashboard_summary(request: Request):
 @router.get("/dashboard/product-bubble")
 def product_bubble_data(request: Request):
     org = require_login(request)
-    orders = supabase.table("orders").select("product,quantity,total_amount_with_gst").eq("org", org).execute().data or []
+    orders = (
+        supabase.table("orders")
+        .select("product,quantity,total_amount_with_gst")
+        .eq("org", org)
+        .execute()
+        .data
+        or []
+    )
 
     stats: dict = defaultdict(lambda: {"quantity": 0, "revenue": 0.0, "orders": 0})
     for o in orders:
@@ -260,32 +279,44 @@ def recent_activity(request: Request):
     org = require_login(request)
 
     # Pending can mean payment pending or delivery pending; the order status is set to "Pending" when either is true.
-    pending_orders = supabase.table("orders") \
-        .select("order_id,product,quantity,delivered_quantity,total_amount_with_gst,status,pending_amount,receiver_name,date") \
-        .eq("org", org) \
-        .eq("status", "Pending") \
-        .order("date", desc=True) \
-        .execute().data or []
+    pending_orders = (
+        supabase.table("orders")
+        .select(
+            "order_id,product,quantity,delivered_quantity,total_amount_with_gst,status,pending_amount,receiver_name,date"
+        )
+        .eq("org", org)
+        .eq("status", "Pending")
+        .order("date", desc=True)
+        .execute()
+        .data
+        or []
+    )
 
     result_orders = list(pending_orders)
 
     # Ensure we return at least 5 items by adding recent completed orders if needed.
     if len(result_orders) < 5:
         needed = 5 - len(result_orders)
-        completed_orders = supabase.table("orders") \
-            .select("order_id,product,quantity,delivered_quantity,total_amount_with_gst,status,pending_amount,receiver_name,date") \
-            .eq("org", org) \
-            .eq("status", "Completed") \
-            .order("date", desc=True) \
-            .limit(needed) \
-            .execute().data or []
+        completed_orders = (
+            supabase.table("orders")
+            .select(
+                "order_id,product,quantity,delivered_quantity,total_amount_with_gst,status,pending_amount,receiver_name,date"
+            )
+            .eq("org", org)
+            .eq("status", "Completed")
+            .order("date", desc=True)
+            .limit(needed)
+            .execute()
+            .data
+            or []
+        )
         result_orders.extend(completed_orders)
 
     result = []
     for o in result_orders:
         total = o.get("total_amount_with_gst", 0)
         pending = o.get("pending_amount", 0)
-        
+
         # Calculate payment status dynamically
         if pending <= 0:
             payment_status = "Paid"
@@ -294,18 +325,20 @@ def recent_activity(request: Request):
         else:
             payment_status = "Pending"
 
-        result.append({
-            "id": str(o.get("order_id", "")),
-            "product": (o.get("product") or "—").strip().title(),
-            "receiver": (o.get("receiver_name") or "—").strip().title(),
-            "amount": round(total, 2),
-            "quantity": o.get("quantity", 0),
-            "delivered_quantity": o.get("delivered_quantity", 0),
-            "pending_amount": pending,
-            "status": o.get("status", "Pending"),
-            "payment_status": payment_status,
-            "date": o.get("date", ""),
-        })
+        result.append(
+            {
+                "id": str(o.get("order_id", "")),
+                "product": (o.get("product") or "—").strip().title(),
+                "receiver": (o.get("receiver_name") or "—").strip().title(),
+                "amount": round(total, 2),
+                "quantity": o.get("quantity", 0),
+                "delivered_quantity": o.get("delivered_quantity", 0),
+                "pending_amount": pending,
+                "status": o.get("status", "Pending"),
+                "payment_status": payment_status,
+                "date": o.get("date", ""),
+            }
+        )
 
     return result
 
@@ -318,45 +351,63 @@ def recent_activity(request: Request):
 def fulfillment_gap(request: Request):
     org = require_login(request)
     from datetime import datetime
-    
+
     # We need both order's expected date and delivery's actual date
-    orders = supabase.table("orders").select("order_id,product,expected_delivery_date").eq("org", org).execute().data or []
-    deliveries = supabase.table("deliveries").select("order_id,delivery_date").eq("org", org).execute().data or []
-    
+    orders = (
+        supabase.table("orders")
+        .select("order_id,product,expected_delivery_date")
+        .eq("org", org)
+        .execute()
+        .data
+        or []
+    )
+    deliveries = (
+        supabase.table("deliveries")
+        .select("order_id,delivery_date")
+        .eq("org", org)
+        .execute()
+        .data
+        or []
+    )
+
     # Map order_id to order info
     order_map = {o["order_id"]: o for o in orders if o.get("expected_delivery_date")}
-    
+
     result = []
     # To keep the chart readable, we'll limit to the 50 most recent deliveries
-    deliveries_sorted = sorted(deliveries, key=lambda d: d.get("delivery_date", ""), reverse=True)[:50]
-    
+    deliveries_sorted = sorted(
+        deliveries, key=lambda d: d.get("delivery_date", ""), reverse=True
+    )[:50]
+
     for d in deliveries_sorted:
         o_id = d.get("order_id")
         actual_date_str = d.get("delivery_date")
-        
+
         if not actual_date_str or o_id not in order_map:
             continue
-            
+
         expected_date_str = order_map[o_id].get("expected_delivery_date")
         product_name = (order_map[o_id].get("product") or "Unknown").strip().title()
-        
+
         try:
             actual = datetime.strptime(actual_date_str, "%Y-%m-%d").date()
             expected = datetime.strptime(expected_date_str, "%Y-%m-%d").date()
-            
+
             # days_gap: +ve means late (actual > expected), -ve means early (actual < expected)
             days_gap = (actual - expected).days
-            
-            result.append({
-                "order_id": o_id,
-                "product": product_name,
-                "expected": expected_date_str,
-                "actual": actual_date_str,
-                "days_gap": days_gap
-            })
+
+            result.append(
+                {
+                    "order_id": o_id,
+                    "product": product_name,
+                    "expected": expected_date_str,
+                    "actual": actual_date_str,
+                    "days_gap": days_gap,
+                }
+            )
         except ValueError:
             continue
-            
+
     # Sort chronologically by actual delivery date for the UI timeline
     result.sort(key=lambda x: x["actual"])
     return result
@@ -369,25 +420,32 @@ def fulfillment_gap(request: Request):
 @router.get("/churn-retention")
 def churn_retention(request: Request):
     org = require_login(request)
-    orders = supabase.table("orders").select("receiver_name,date").eq("org", org).execute().data or []
-    
+    orders = (
+        supabase.table("orders")
+        .select("receiver_name,date")
+        .eq("org", org)
+        .execute()
+        .data
+        or []
+    )
+
     # Track the FIRST month we saw each customer
     first_seen = {}
-    
+
     # We need to process chronologically to get true "New" vs "Returning"
     orders_sorted = sorted(orders, key=lambda x: x.get("date", ""))
-    
+
     # Store aggregated data per month
     monthly_stats = defaultdict(lambda: {"new": 0, "returning": set()})
-    
+
     for o in orders_sorted:
         cust = (o.get("receiver_name") or "Unknown").strip().title()
         date_str = o.get("date")
         if not date_str:
             continue
-            
-        m_key = date_str[:7] # YYYY-MM
-        
+
+        m_key = date_str[:7]  # YYYY-MM
+
         if cust not in first_seen:
             # First time we see this customer ever = New for this month
             first_seen[cust] = m_key
@@ -396,16 +454,18 @@ def churn_retention(request: Request):
             # We've seen them before. If it's a DIFFERENT month than their first time, they are 'returning' this month
             if first_seen[cust] != m_key:
                 monthly_stats[m_key]["returning"].add(cust)
-                
+
     # Format for charting
     result = []
     for month in sorted(monthly_stats.keys()):
-        result.append({
-            "month": month,
-            "new": monthly_stats[month]["new"],
-            "returning": len(monthly_stats[month]["returning"])
-        })
-        
+        result.append(
+            {
+                "month": month,
+                "new": monthly_stats[month]["new"],
+                "returning": len(monthly_stats[month]["returning"]),
+            }
+        )
+
     return result
 
 
@@ -416,33 +476,37 @@ def churn_retention(request: Request):
 @router.get("/aov-tracker")
 def aov_tracker(request: Request):
     org = require_login(request)
-    orders = supabase.table("orders").select("date,total_amount_with_gst").eq("org", org).execute().data or []
-    
+    orders = (
+        supabase.table("orders")
+        .select("date,total_amount_with_gst")
+        .eq("org", org)
+        .execute()
+        .data
+        or []
+    )
+
     monthly_data = defaultdict(lambda: {"revenue": 0.0, "count": 0})
-    
+
     for o in orders:
         date_str = o.get("date")
         amount = o.get("total_amount_with_gst", 0)
         if not date_str or not amount:
             continue
-            
+
         m_key = date_str[:7]
         monthly_data[m_key]["revenue"] += amount
         monthly_data[m_key]["count"] += 1
-        
+
     result = []
     for month in sorted(monthly_data.keys()):
         count = monthly_data[month]["count"]
         revenue = monthly_data[month]["revenue"]
         aov = round(revenue / count, 2) if count > 0 else 0
-        
-        result.append({
-            "month": month,
-            "aov": aov,
-            "revenue": round(revenue, 2),
-            "orders": count
-        })
-        
+
+        result.append(
+            {"month": month, "aov": aov, "revenue": round(revenue, 2), "orders": count}
+        )
+
     return result
 
 
@@ -453,18 +517,21 @@ def aov_tracker(request: Request):
 @router.get("/delivery-fragmentation")
 def delivery_fragmentation(request: Request):
     org = require_login(request)
-    
+
     # We only care about orders that have at least some completed deliveries
-    deliveries = supabase.table("deliveries").select("order_id").eq("org", org).execute().data or []
-    
+    deliveries = (
+        supabase.table("deliveries").select("order_id").eq("org", org).execute().data
+        or []
+    )
+
     # Count deliveries per order
     trip_counts = defaultdict(int)
     for d in deliveries:
         trip_counts[d["order_id"]] += 1
-        
+
     # Group into buckets
     buckets = {"1 Trip": 0, "2 Trips": 0, "3+ Trips": 0}
-    
+
     for count in trip_counts.values():
         if count == 1:
             buckets["1 Trip"] += 1
@@ -472,14 +539,14 @@ def delivery_fragmentation(request: Request):
             buckets["2 Trips"] += 1
         else:
             buckets["3+ Trips"] += 1
-            
+
     # Format for Recharts PieChart
     result = [
         {"name": "1 Trip", "value": buckets["1 Trip"]},
         {"name": "2 Trips", "value": buckets["2 Trips"]},
-        {"name": "3+ Trips", "value": buckets["3+ Trips"]}
+        {"name": "3+ Trips", "value": buckets["3+ Trips"]},
     ]
-    
+
     # Filter out empty buckets so the chart doesn't render 0-slices awkwardly
     return [r for r in result if r["value"] > 0]
 
@@ -491,36 +558,43 @@ def delivery_fragmentation(request: Request):
 @router.get("/revenue-held-hostage")
 def revenue_held_hostage(request: Request):
     org = require_login(request)
-    
+
     # Fetch orders where status is STILL pending, but they HAVE delivered something
-    orders = supabase.table("orders") \
-        .select("date,delivered_quantity,pending_amount") \
-        .eq("org", org) \
-        .eq("status", "Pending") \
-        .execute().data or []
-        
+    orders = (
+        supabase.table("orders")
+        .select("date,delivered_quantity,pending_amount")
+        .eq("org", org)
+        .eq("status", "Pending")
+        .execute()
+        .data
+        or []
+    )
+
     monthly_stats = defaultdict(lambda: {"unpaid_units": 0, "held_revenue": 0.0})
-    
+
     for o in orders:
         delivered_qty = o.get("delivered_quantity", 0)
         pending_amt = o.get("pending_amount", 0.0)
         date_str = o.get("date")
-        
+
         # We only care if physical stock has left the building but we aren't paid
         if delivered_qty > 0 and pending_amt > 0 and date_str:
-            m_key = date_str[:7] # YYYY-MM
+            m_key = date_str[:7]  # YYYY-MM
             monthly_stats[m_key]["unpaid_units"] += delivered_qty
             monthly_stats[m_key]["held_revenue"] += pending_amt
-            
+
     result = []
     for month in sorted(monthly_stats.keys()):
-        result.append({
-            "month": month,
-            "unpaid_units": monthly_stats[month]["unpaid_units"],
-            "held_revenue": round(monthly_stats[month]["held_revenue"], 2)
-        })
-        
+        result.append(
+            {
+                "month": month,
+                "unpaid_units": monthly_stats[month]["unpaid_units"],
+                "held_revenue": round(monthly_stats[month]["held_revenue"], 2),
+            }
+        )
+
     return result
+
 
 # -------------------------------------------------
 # 2️⃣ MONTHLY REVENUE TREND
@@ -532,10 +606,13 @@ def monthly_revenue(request: Request):
     """
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("date,total_amount_with_gst") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders")
+        .select("date,total_amount_with_gst")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
     revenue = defaultdict(float)
 
@@ -555,10 +632,13 @@ def monthly_quantity(request: Request):
     """
     org = require_login(request)
 
-    deliveries = supabase.table("deliveries") \
-        .select("delivery_date,delivery_quantity") \
-        .eq("org", org) \
-        .execute().data
+    deliveries = (
+        supabase.table("deliveries")
+        .select("delivery_date,delivery_quantity")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
     quantity = defaultdict(int)
 
@@ -578,10 +658,13 @@ def top_receivers(request: Request):
     """
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("receiver_name,quantity,total_amount_with_gst") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders")
+        .select("receiver_name,quantity,total_amount_with_gst")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
     revenue = defaultdict(float)
     quantity = defaultdict(int)
@@ -593,7 +676,7 @@ def top_receivers(request: Request):
 
     return {
         "by_revenue": dict(sorted(revenue.items(), key=lambda x: x[1], reverse=True)),
-        "by_quantity": dict(sorted(quantity.items(), key=lambda x: x[1], reverse=True))
+        "by_quantity": dict(sorted(quantity.items(), key=lambda x: x[1], reverse=True)),
     }
 
 
@@ -607,35 +690,32 @@ def product_analytics(request: Request):
     """
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("product,quantity,total_amount_with_gst,date") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders")
+        .select("product,quantity,total_amount_with_gst,date")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
-    product_stats = defaultdict(lambda: {
-        "quantity": 0, 
-        "revenue": 0.0, 
-        "order_count": 0
-    })
+    product_stats = defaultdict(
+        lambda: {"quantity": 0, "revenue": 0.0, "order_count": 0}
+    )
 
     for o in orders:
-        if not o["product"]: continue
+        if not o["product"]:
+            continue
         # Normalize: Strip whitespace and convert to Title Case (iphone -> Iphone)
         p_name = o["product"].strip().title()
-        
+
         product_stats[p_name]["quantity"] += o["quantity"]
         product_stats[p_name]["revenue"] += o["total_amount_with_gst"]
         product_stats[p_name]["order_count"] += 1
 
     # Convert to list for easier frontend consumption
-    result = [
-        {"name": name, **stats} 
-        for name, stats in product_stats.items()
-    ]
+    result = [{"name": name, **stats} for name, stats in product_stats.items()]
 
-    return {
-        "products": sorted(result, key=lambda x: x["revenue"], reverse=True)
-    }
+    return {"products": sorted(result, key=lambda x: x["revenue"], reverse=True)}
 
 
 # -------------------------------------------------
@@ -648,10 +728,13 @@ def customer_lifetime_value(request: Request):
     """
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("receiver_name,date,total_amount_with_gst") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders")
+        .select("receiver_name,date,total_amount_with_gst")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
     clv = defaultdict(float)
     first_seen = {}
@@ -671,7 +754,7 @@ def customer_lifetime_value(request: Request):
         result[r] = {
             "total_clv": clv[r],
             "customer_age_months": months,
-            "clv_per_month": clv[r] / months
+            "clv_per_month": clv[r] / months,
         }
 
     return result
@@ -687,10 +770,9 @@ def customer_retention(request: Request):
     """
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("receiver_name") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders").select("receiver_name").eq("org", org).execute().data
+    )
 
     counts = defaultdict(int)
     for o in orders:
@@ -702,7 +784,5 @@ def customer_retention(request: Request):
     return {
         "total_customers": total_customers,
         "repeat_customers": repeat_customers,
-        "repeat_rate": (
-            repeat_customers / total_customers if total_customers else 0
-        )
+        "repeat_rate": (repeat_customers / total_customers if total_customers else 0),
     }

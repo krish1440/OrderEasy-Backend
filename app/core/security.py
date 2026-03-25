@@ -1,6 +1,7 @@
 import bcrypt
 import re
 
+
 # -------------------------------------------------
 # Password Validation Rules
 # -------------------------------------------------
@@ -33,10 +34,7 @@ def hash_password(password: str) -> str:
     """
     Hashes password using bcrypt.
     """
-    return bcrypt.hashpw(
-        password.encode("utf-8"),
-        bcrypt.gensalt()
-    ).decode("utf-8")
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 # -------------------------------------------------
@@ -58,10 +56,7 @@ def verify_password(password: str, hashed_password: str) -> bool:
         return False
 
     try:
-        return bcrypt.checkpw(
-            password.encode("utf-8"),
-            hashed_password.encode("utf-8")
-        )
+        return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
     except ValueError:
         # Invalid salt or corrupted hash
         return False

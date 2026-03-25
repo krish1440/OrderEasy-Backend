@@ -11,10 +11,9 @@ logging.basicConfig(
     level=logging.INFO,
     format=LOG_FORMAT,
     datefmt=DATE_FORMAT,
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
+
 
 # -------------------------------------------------
 # Application Logger

@@ -10,9 +10,10 @@ GEMINI_CLIENT = google_genai.Client(api_key=api_key) if api_key else None
 
 # Models prioritized by cost/performance
 MODELS = [
-    'models/gemini-2.5-flash',       # Primary: Fast & Balanced
-    'models/gemini-2.0-flash-lite',  # Secondary: Cheaper/Faster
+    "models/gemini-2.5-flash",  # Primary: Fast & Balanced
+    "models/gemini-2.0-flash-lite",  # Secondary: Cheaper/Faster
 ]
+
 
 def generate_business_insights(data_summary: dict, org_name: str) -> str:
     """
@@ -44,11 +45,10 @@ def generate_business_insights(data_summary: dict, org_name: str) -> str:
         try:
             print(f"Attempting generation with model: {model_name}")
             response = GEMINI_CLIENT.models.generate_content(
-                model=model_name,
-                contents=prompt
+                model=model_name, contents=prompt
             )
             return response.text
-            
+
         except Exception as e:
             print(f"Model {model_name} failed: {str(e)}")
             last_error = e

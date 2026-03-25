@@ -1,18 +1,19 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
 from app.core.supabase import supabase
 from app.core.session import require_login
 from collections import defaultdict
 import datetime
 import pandas as pd
-import numpy as np
 
 router = APIRouter()
+
 
 # -------------------------------------------------
 # Helpers
 # -------------------------------------------------
 def month_key(date_str: str):
     return date_str[:7]
+
 
 def year_key(date_str: str):
     return date_str[:4]
@@ -26,15 +27,9 @@ def current_month_metrics(request: Request):
     org = require_login(request)
     current_month = datetime.date.today().strftime("%Y-%m")
 
-    orders = supabase.table("orders") \
-        .select("*") \
-        .eq("org", org) \
-        .execute().data
+    orders = supabase.table("orders").select("*").eq("org", org).execute().data
 
-    deliveries = supabase.table("deliveries") \
-        .select("*") \
-        .eq("org", org) \
-        .execute().data
+    deliveries = supabase.table("deliveries").select("*").eq("org", org).execute().data
 
     month_orders = [o for o in orders if month_key(o["date"]) == current_month]
 
@@ -49,7 +44,7 @@ def current_month_metrics(request: Request):
         "total_orders": len(month_orders),
         "completed_orders": len(completed),
         "pending_orders": len(pending),
-        "units_delivered": sum(d["delivery_quantity"] for d in month_deliveries)
+        "units_delivered": sum(d["delivery_quantity"] for d in month_deliveries),
     }
 
 
@@ -60,10 +55,13 @@ def current_month_metrics(request: Request):
 def yearly_revenue(request: Request):
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("date,total_amount_with_gst") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders")
+        .select("date,total_amount_with_gst")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
     yearly = defaultdict(float)
 
@@ -80,17 +78,20 @@ def yearly_revenue(request: Request):
 def revenue_summary(request: Request):
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("total_amount_with_gst") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders")
+        .select("total_amount_with_gst")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
     total_revenue = sum(o["total_amount_with_gst"] for o in orders)
     avg_order_value = total_revenue / len(orders) if orders else 0
 
     return {
         "total_revenue": round(total_revenue, 2),
-        "average_order_value": round(avg_order_value, 2)
+        "average_order_value": round(avg_order_value, 2),
     }
 
 
@@ -101,10 +102,13 @@ def revenue_summary(request: Request):
 def month_over_month_growth(request: Request):
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("date,total_amount_with_gst") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders")
+        .select("date,total_amount_with_gst")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
     revenue = defaultdict(float)
 
@@ -117,9 +121,7 @@ def month_over_month_growth(request: Request):
     for i in range(1, len(months)):
         prev = revenue[months[i - 1]]
         curr = revenue[months[i]]
-        growth[months[i]] = (
-            ((curr - prev) / prev) * 100 if prev > 0 else 0
-        )
+        growth[months[i]] = ((curr - prev) / prev) * 100 if prev > 0 else 0
 
     return growth
 
@@ -131,10 +133,13 @@ def month_over_month_growth(request: Request):
 def monthly_pending_amount(request: Request):
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("date,pending_amount") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders")
+        .select("date,pending_amount")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
     pending = defaultdict(float)
 
@@ -151,10 +156,7 @@ def monthly_pending_amount(request: Request):
 def order_status_distribution(request: Request):
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("status") \
-        .eq("org", org) \
-        .execute().data
+    orders = supabase.table("orders").select("status").eq("org", org).execute().data
 
     result = defaultdict(int)
     for o in orders:
@@ -170,15 +172,18 @@ def order_status_distribution(request: Request):
 def top_customers_by_order_size(request: Request):
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("receiver_name,date,total_amount_with_gst") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders")
+        .select("receiver_name,date,total_amount_with_gst")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
     df = pd.DataFrame(orders)
     if df.empty:
         return {"top_total": {}, "top_yearly": [], "top_monthly": []}
-        
+
     df["year"] = df["date"].str[:4]
     df["month"] = df["date"].str[:7]
 
@@ -205,7 +210,7 @@ def top_customers_by_order_size(request: Request):
             .groupby("month")
             .apply(lambda x: x.nlargest(5, "total_amount_with_gst"))
             .to_dict(orient="records")
-        )
+        ),
     }
 
 
@@ -224,12 +229,12 @@ def delivery_performance_metrics(request: Request):
     total_deliveries = len(dels)
     total_qty = sum(d["delivery_quantity"] for d in dels)
     total_amt = sum(d["total_amount_received"] for d in dels)
-    
+
     return {
         "total_orders": len(orders),
         "total_deliveries": total_deliveries,
         "total_quantity": total_qty,
-        "total_amount": total_amt
+        "total_amount": total_amt,
     }
 
 
@@ -239,25 +244,31 @@ def delivery_performance_metrics(request: Request):
 @router.get("/charts/delivery-distribution")
 def delivery_distribution(request: Request):
     org = require_login(request)
-    
-    dels = supabase.table("deliveries").select("delivery_quantity").eq("org", org).execute().data
-    
+
+    dels = (
+        supabase.table("deliveries")
+        .select("delivery_quantity")
+        .eq("org", org)
+        .execute()
+        .data
+    )
+
     if not dels:
         return []
 
     quantities = [d["delivery_quantity"] for d in dels]
-    
+
     # Define bins
     bins = [0, 10, 20, 50, 100, 500, 1000, 999999]
     labels = ["0-10", "10-20", "20-50", "50-100", "100-500", "500-1k", "1k+"]
-    
+
     counts = defaultdict(int)
     for q in quantities:
         for i, upper in enumerate(bins[1:]):
             if q <= upper:
                 counts[labels[i]] += 1
                 break
-                
+
     return [{"range": k, "count": counts[k]} for k in labels if counts[k] > 0]
 
 
@@ -267,18 +278,21 @@ def delivery_distribution(request: Request):
 @router.get("/charts/scatter-revenue-qty")
 def scatter_revenue_qty(request: Request):
     org = require_login(request)
-    
-    orders = supabase.table("orders") \
-        .select("order_id,quantity,total_amount_with_gst,product") \
-        .eq("org", org) \
-        .execute().data
-        
+
+    orders = (
+        supabase.table("orders")
+        .select("order_id,quantity,total_amount_with_gst,product")
+        .eq("org", org)
+        .execute()
+        .data
+    )
+
     return [
         {
             "order_id": o["order_id"],
             "quantity": o["quantity"],
             "revenue": o["total_amount_with_gst"],
-            "product": o["product"] or "Unknown"
+            "product": o["product"] or "Unknown",
         }
         for o in orders
     ]
@@ -290,15 +304,21 @@ def scatter_revenue_qty(request: Request):
 @router.get("/charts/delivery-heatmap")
 def delivery_heatmap(request: Request):
     org = require_login(request)
-    
-    dels = supabase.table("deliveries").select("delivery_date").eq("org", org).execute().data
-    
+
+    dels = (
+        supabase.table("deliveries")
+        .select("delivery_date")
+        .eq("org", org)
+        .execute()
+        .data
+    )
+
     counts = defaultdict(int)
     for d in dels:
         # Assuming format YYYY-MM-DD
         date = d["delivery_date"].split("T")[0]
         counts[date] += 1
-        
+
     return [{"date": k, "count": v} for k, v in counts.items()]
 
 
@@ -308,15 +328,18 @@ def delivery_heatmap(request: Request):
 @router.get("/charts/expected-delivery-schedule")
 def expected_delivery_schedule(request: Request):
     org = require_login(request)
-    
+
     # Fetch only PENDING orders — also grab delivered_quantity so we can compute remaining
-    orders = supabase.table("orders") \
-        .select("expected_delivery_date,quantity,delivered_quantity") \
-        .eq("org", org) \
-        .eq("status", "Pending") \
-        .neq("expected_delivery_date", "None") \
-        .execute().data
-        
+    orders = (
+        supabase.table("orders")
+        .select("expected_delivery_date,quantity,delivered_quantity")
+        .eq("org", org)
+        .eq("status", "Pending")
+        .neq("expected_delivery_date", "None")
+        .execute()
+        .data
+    )
+
     schedule = defaultdict(int)
     for o in orders:
         if o["expected_delivery_date"]:
@@ -325,5 +348,5 @@ def expected_delivery_schedule(request: Request):
             remaining = o["quantity"] - (o.get("delivered_quantity") or 0)
             if remaining > 0:
                 schedule[date_str] += remaining
-            
+
     return [{"date": k, "total_quantity": v} for k, v in schedule.items()]

@@ -6,14 +6,15 @@ from app.core.logger import get_logger
 router = APIRouter()
 logger = get_logger(__name__)
 
+
 @router.post("/")
 async def upload(request: Request, file: UploadFile = File(...)):
     """
     Generic file upload endpoint.
     Returns Cloudinary metadata (url, public_id, etc.)
     """
-    org = require_login(request)
-    
+    _ = require_login(request)
+
     if not file:
         raise HTTPException(400, "No file provided")
 

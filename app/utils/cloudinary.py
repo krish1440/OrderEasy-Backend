@@ -5,7 +5,7 @@ from typing import Dict
 from app.core.config import (
     CLOUDINARY_CLOUD_NAME,
     CLOUDINARY_API_KEY,
-    CLOUDINARY_API_SECRET
+    CLOUDINARY_API_SECRET,
 )
 from app.core.logger import get_logger
 
@@ -18,16 +18,14 @@ cloudinary.config(
     cloud_name=CLOUDINARY_CLOUD_NAME,
     api_key=CLOUDINARY_API_KEY,
     api_secret=CLOUDINARY_API_SECRET,
-    secure=True
+    secure=True,
 )
+
 
 # -------------------------------------------------
 # Upload File (PDF / Image)
 # -------------------------------------------------
-def upload_file(
-    file,
-    folder: str = "ordereasy"
-) -> Dict[str, str]:
+def upload_file(file, folder: str = "ordereasy") -> Dict[str, str]:
     """
     Uploads a file to Cloudinary.
 
@@ -42,11 +40,7 @@ def upload_file(
     """
 
     try:
-        result = cloudinary.uploader.upload(
-            file,
-            folder=folder,
-            resource_type="auto"
-        )
+        result = cloudinary.uploader.upload(file, folder=folder, resource_type="auto")
     except Exception as e:
         logger.error(f"Cloudinary upload failed: {e}")
         raise RuntimeError("File upload failed")
@@ -58,8 +52,9 @@ def upload_file(
         "url": result.get("secure_url"),
         "file_name": result.get("original_filename"),
         "upload_date": result.get("created_at"),
-        "resource_type": result.get("resource_type")
+        "resource_type": result.get("resource_type"),
     }
+
 
 # -------------------------------------------------
 # Delete File
@@ -73,10 +68,7 @@ def delete_file(public_id: str, resource_type: str = "auto") -> None:
         return
 
     try:
-        cloudinary.uploader.destroy(
-            public_id,
-            resource_type=resource_type
-        )
+        cloudinary.uploader.destroy(public_id, resource_type=resource_type)
         logger.info(f"Cloudinary file deleted: {public_id}")
     except Exception as e:
         logger.error(f"Cloudinary delete failed ({public_id}): {e}")

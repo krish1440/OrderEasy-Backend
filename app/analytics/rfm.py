@@ -3,7 +3,6 @@ from app.core.supabase import supabase
 from app.core.session import require_login
 from collections import defaultdict
 import pandas as pd
-import datetime
 
 router = APIRouter()
 
@@ -29,6 +28,7 @@ SEGMENT_MEANINGS = {
     ),
 }
 
+
 # -------------------------------------------------
 # 🔁 RFM CALCULATION
 # -------------------------------------------------
@@ -44,10 +44,13 @@ def rfm_segmentation(request: Request):
 
     org = require_login(request)
 
-    orders = supabase.table("orders") \
-        .select("receiver_name,date,total_amount_with_gst") \
-        .eq("org", org) \
-        .execute().data
+    orders = (
+        supabase.table("orders")
+        .select("receiver_name,date,total_amount_with_gst")
+        .eq("org", org)
+        .execute()
+        .data
+    )
 
     if not orders:
         raise HTTPException(400, "No order data available for RFM analysis")
@@ -60,48 +63,39 @@ def rfm_segmentation(request: Request):
     # -------------------------------------------------
     # Compute R, F, M
     # -------------------------------------------------
-    rfm = df.groupby("receiver_name").agg({
-        "date": lambda x: (today - x.max()).days,
-        "receiver_name": "count",
-        "total_amount_with_gst": "sum"
-    })
+    rfm = df.groupby("receiver_name").agg(
+        {
+            "date": lambda x: (today - x.max()).days,
+            "receiver_name": "count",
+            "total_amount_with_gst": "sum",
+        }
+    )
     # -------------------------------------------------
     # Guard: Ensure enough customers for quartile-based RFM
     # -------------------------------------------------
     if len(rfm) < 4:
         raise HTTPException(
-        status_code=400,
-        detail="Not enough customers for RFM segmentation (minimum 4 required)"
-    )
-
+            status_code=400,
+            detail="Not enough customers for RFM segmentation (minimum 4 required)",
+        )
 
     rfm.columns = ["recency", "frequency", "monetary"]
 
     # -------------------------------------------------
     # Scoring (Quartiles)
     # -------------------------------------------------
-    rfm["R_score"] = pd.qcut(
-        rfm["recency"],
-        4,
-        labels=[4, 3, 2, 1]
-    )
+    rfm["R_score"] = pd.qcut(rfm["recency"], 4, labels=[4, 3, 2, 1])
 
     rfm["F_score"] = pd.qcut(
-        rfm["frequency"].rank(method="first"),
-        4,
-        labels=[1, 2, 3, 4]
+        rfm["frequency"].rank(method="first"), 4, labels=[1, 2, 3, 4]
     )
 
-    rfm["M_score"] = pd.qcut(
-        rfm["monetary"],
-        4,
-        labels=[1, 2, 3, 4]
-    )
+    rfm["M_score"] = pd.qcut(rfm["monetary"], 4, labels=[1, 2, 3, 4])
 
     rfm["RFM_Score"] = (
-        rfm["R_score"].astype(int) +
-        rfm["F_score"].astype(int) +
-        rfm["M_score"].astype(int)
+        rfm["R_score"].astype(int)
+        + rfm["F_score"].astype(int)
+        + rfm["M_score"].astype(int)
     )
 
     # -------------------------------------------------
@@ -132,9 +126,9 @@ def rfm_segmentation(request: Request):
             segment: {
                 "customers": customers,
                 "count": len(customers),
-                "business_explanation": SEGMENT_MEANINGS[segment]
+                "business_explanation": SEGMENT_MEANINGS[segment],
             }
             for segment, customers in segment_customers.items()
         },
-        "rfm_table": rfm.reset_index().to_dict(orient="records")
+        "rfm_table": rfm.reset_index().to_dict(orient="records"),
     }

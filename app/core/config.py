@@ -47,6 +47,4 @@ REQUIRED_VARS = {
 missing = [k for k, v in REQUIRED_VARS.items() if not v]
 
 if missing:
-    raise RuntimeError(
-        f"Missing required environment variables: {', '.join(missing)}"
-    )
+    raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")

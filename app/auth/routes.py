@@ -1,11 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 from app.core.supabase import supabase
-from app.core.security import (
-    validate_password,
-    hash_password,
-    verify_password
-)
+from app.core.security import validate_password, hash_password, verify_password
 from app.core.session import require_login
 from app.core.config import ADMIN_USERNAME, ADMIN_PASSWORD
 from app.core.logger import get_logger
@@ -13,12 +9,15 @@ from app.core.logger import get_logger
 router = APIRouter()
 logger = get_logger(__name__)
 
+
 class LoginSchema(BaseModel):
     username: str
     password: str
 
+
 class SendOtpSchema(BaseModel):
     email: str
+
 
 class SignupSchema(BaseModel):
     username: str
@@ -26,6 +25,7 @@ class SignupSchema(BaseModel):
     organization: str
     email: str
     otp: str
+
 
 # -------------------------------------------------
 # 1️⃣ SEND OTP
@@ -37,21 +37,20 @@ def send_otp(body: SendOtpSchema):
     """
     try:
         # Supabase signInWithOtp sends an email with the OTP code
-        res = supabase.auth.sign_in_with_otp({
-            "email": body.email
-        })
-        
-        # Note: res.error might be raised as an exception depending on the client version, 
+        res = supabase.auth.sign_in_with_otp({"email": body.email})
+
+        # Note: res.error might be raised as an exception depending on the client version,
         # or returned in res. If this client raises, the try/except catches it.
         # If it returns an object with error property:
-        if hasattr(res, 'error') and res.error:
-             raise HTTPException(400, str(res.error))
+        if hasattr(res, "error") and res.error:
+            raise HTTPException(400, str(res.error))
 
         logger.info(f"OTP sent to {body.email}")
         return {"message": "OTP sent successfully"}
     except Exception as e:
         logger.error(f"Error sending OTP: {str(e)}")
         raise HTTPException(400, f"Failed to send OTP: {str(e)}")
+
 
 # -------------------------------------------------
 # 2️⃣ ORGANIZATION SIGNUP (WITH OTP VERIFICATION)
@@ -71,24 +70,19 @@ def signup(body: SignupSchema):
 
     # --- Step 1: Verify OTP ---
     try:
-        res = supabase.auth.verify_otp({
-            "email": email,
-            "token": otp,
-            "type": "email"
-        })
-        
+        res = supabase.auth.verify_otp({"email": email, "token": otp, "type": "email"})
+
         if not res.user:
             raise HTTPException(400, "Invalid OTP or Email")
-            
+
     except Exception as e:
         logger.error(f"OTP Verifcation Failed: {str(e)}")
         raise HTTPException(400, "Invalid OTP. Please check and try again.")
 
     # --- Step 2: Check Local Persistence ---
-    existing = supabase.table("users") \
-        .select("username") \
-        .eq("username", username) \
-        .execute()
+    existing = (
+        supabase.table("users").select("username").eq("username", username).execute()
+    )
 
     if existing.data:
         raise HTTPException(400, "Username already exists")
@@ -98,13 +92,15 @@ def signup(body: SignupSchema):
     except ValueError as e:
         raise HTTPException(400, str(e))
 
-    supabase.table("users").insert({
-        "username": username,
-        "password": hash_password(password),
-        "organization": organization,
-        "is_admin": 0,
-        "email": email
-    }).execute()
+    supabase.table("users").insert(
+        {
+            "username": username,
+            "password": hash_password(password),
+            "organization": organization,
+            "is_admin": 0,
+            "email": email,
+        }
+    ).execute()
 
     logger.info(f"Organization registered: {organization}")
     return {"message": "Organization registered successfully"}
@@ -134,10 +130,7 @@ def login(request: Request, body: LoginSchema):
             return {"message": "Admin logged in successfully"}
 
     # -------- ORG LOGIN --------
-    res = supabase.table("users") \
-        .select("*") \
-        .eq("username", username) \
-        .execute()
+    res = supabase.table("users").select("*").eq("username", username).execute()
 
     if not res.data:
         raise HTTPException(401, "Invalid username or password")
@@ -181,15 +174,18 @@ def get_account_info(request: Request):
         return {
             "username": request.session.get("username"),
             "organization": "ADMIN",
-            "is_admin": True
+            "is_admin": True,
         }
 
     username = request.session.get("username")
 
-    user = supabase.table("users") \
-        .select("username, organization, is_admin, email, logo_url") \
-        .eq("username", username) \
-        .execute().data
+    user = (
+        supabase.table("users")
+        .select("username, organization, is_admin, email, logo_url")
+        .eq("username", username)
+        .execute()
+        .data
+    )
 
     if not user:
         raise HTTPException(404, "User not found")
@@ -203,23 +199,24 @@ def get_account_info(request: Request):
 class UpdateLogoSchema(BaseModel):
     logo_url: str
 
+
 @router.put("/update-logo")
 def update_logo(request: Request, body: UpdateLogoSchema):
     """
     Updates the organization's custom logo URL.
     """
     org = require_login(request)
-    
+
     if request.session.get("is_admin"):
         raise HTTPException(400, "Admin account cannot have a custom logo")
 
     username = request.session.get("username")
 
     try:
-        supabase.table("users").update({
-            "logo_url": body.logo_url
-        }).eq("username", username).execute()
-        
+        supabase.table("users").update({"logo_url": body.logo_url}).eq(
+            "username", username
+        ).execute()
+
         logger.info(f"Logo updated for organization: {org}")
         return {"message": "Logo updated successfully", "logo_url": body.logo_url}
     except Exception as e:
@@ -235,7 +232,7 @@ def change_password(
     request: Request,
     current_password: str,
     new_password: str,
-    confirm_new_password: str
+    confirm_new_password: str,
 ):
     """
     Change password with full validation.
@@ -254,10 +251,9 @@ def change_password(
 
     username = request.session.get("username")
 
-    user = supabase.table("users") \
-        .select("*") \
-        .eq("username", username) \
-        .execute().data[0]
+    user = (
+        supabase.table("users").select("*").eq("username", username).execute().data[0]
+    )
 
     if not verify_password(current_password, user["password"]):
         raise HTTPException(400, "Current password is incorrect")
@@ -267,9 +263,9 @@ def change_password(
     except ValueError as e:
         raise HTTPException(400, str(e))
 
-    supabase.table("users").update({
-        "password": hash_password(new_password)
-    }).eq("username", username).execute()
+    supabase.table("users").update({"password": hash_password(new_password)}).eq(
+        "username", username
+    ).execute()
 
     return {"message": "Password updated successfully"}
 
@@ -281,6 +277,7 @@ class ForgotPasswordSchema(BaseModel):
     email: str
     redirect_to: str
 
+
 @router.post("/forgot-password")
 def forgot_password(body: ForgotPasswordSchema):
     """
@@ -289,23 +286,34 @@ def forgot_password(body: ForgotPasswordSchema):
     """
     try:
         # 1. Check if the email exists in our local users table
-        user = supabase.table("users").select("email").eq("email", body.email).execute().data
+        user = (
+            supabase.table("users")
+            .select("email")
+            .eq("email", body.email)
+            .execute()
+            .data
+        )
         if not user:
             # We still return success to prevent email enumeration attacks
-            return {"message": "If an account with that email exists, we have sent a reset link"}
+            return {
+                "message": "If an account with that email exists, we have sent a reset link"
+            }
 
         # 2. Call Supabase reset password endpoint
         response = supabase.auth.reset_password_for_email(
-            body.email,
-            options={"redirect_to": body.redirect_to}
+            body.email, options={"redirect_to": body.redirect_to}
         )
-        
+
         logger.info(f"Password reset requested for {body.email}")
-        return {"message": "If an account with that email exists, we have sent a reset link"}
+        return {
+            "message": "If an account with that email exists, we have sent a reset link"
+        }
     except Exception as e:
         logger.error(f"Failed to process forgot password for {body.email}: {str(e)}")
         # Generic error message to prevent enumeration
-        return {"message": "If an account with that email exists, we have sent a reset link"}
+        return {
+            "message": "If an account with that email exists, we have sent a reset link"
+        }
 
 
 # -------------------------------------------------
@@ -314,6 +322,7 @@ def forgot_password(body: ForgotPasswordSchema):
 class ResetPasswordSchema(BaseModel):
     new_password: str
     access_token: str
+
 
 @router.post("/reset-password")
 def execute_reset_password(body: ResetPasswordSchema):
@@ -329,11 +338,11 @@ def execute_reset_password(body: ResetPasswordSchema):
 
         # 1. Update the user password in Supabase Auth using their session
         # We need to set the session using the access token first
-        supabase.auth.set_session(body.access_token, body.access_token) # Refresh token not strictly needed for this one-off
-        
-        auth_response = supabase.auth.update_user({
-            "password": body.new_password
-        })
+        supabase.auth.set_session(
+            body.access_token, body.access_token
+        )  # Refresh token not strictly needed for this one-off
+
+        auth_response = supabase.auth.update_user({"password": body.new_password})
 
         if not auth_response.user:
             raise Exception("Failed to update password in Auth provider")
@@ -341,19 +350,21 @@ def execute_reset_password(body: ResetPasswordSchema):
         # 2. Update our custom `users` table password field
         # The auth update was successful, so we sync our local password standard
         user_email = auth_response.user.email
-        supabase.table("users").update({
-            "password": hash_password(body.new_password)
-        }).eq("email", user_email).execute()
+        supabase.table("users").update(
+            {"password": hash_password(body.new_password)}
+        ).eq("email", user_email).execute()
 
         logger.info(f"Password successfully reset for {user_email}")
-        
+
         # 3. Log them out so they have to sign in with new credentials
         supabase.auth.sign_out()
-        
+
         return {"message": "Password successfully reset"}
     except Exception as e:
         logger.error(f"Reset password error: {str(e)}")
-        raise HTTPException(400, "Invalid or expired reset token, or password update failed.")
+        raise HTTPException(
+            400, "Invalid or expired reset token, or password update failed."
+        )
 
 
 # -------------------------------------------------
@@ -370,10 +381,7 @@ def delete_account(request: Request):
     if request.session.get("is_admin"):
         raise HTTPException(400, "Admin account cannot be deleted")
 
-    supabase.table("users") \
-        .delete() \
-        .eq("organization", org) \
-        .execute()
+    supabase.table("users").delete().eq("organization", org).execute()
 
     request.session.clear()
 

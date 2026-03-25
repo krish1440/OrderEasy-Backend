@@ -8,17 +8,20 @@ from app.utils.cloudinary import delete_file
 router = APIRouter()
 logger = get_logger(__name__)
 
+
 # -------------------------------------------------
 # Helper: Get next delivery_id per order
 # -------------------------------------------------
 def get_next_delivery_id(order_id: int, org: str) -> int:
-    res = supabase.table("deliveries") \
-        .select("delivery_id") \
-        .eq("order_id", order_id) \
-        .eq("org", org) \
-        .order("delivery_id", desc=True) \
-        .limit(1) \
+    res = (
+        supabase.table("deliveries")
+        .select("delivery_id")
+        .eq("order_id", order_id)
+        .eq("org", org)
+        .order("delivery_id", desc=True)
+        .limit(1)
         .execute()
+    )
 
     return res.data[0]["delivery_id"] + 1 if res.data else 1
 
@@ -34,11 +37,7 @@ def add_delivery(payload: dict, request: Request):
 
     org = require_login(request)
 
-    required_fields = [
-        "order_id",
-        "delivery_quantity",
-        "total_amount_received"
-    ]
+    required_fields = ["order_id", "delivery_quantity", "total_amount_received"]
 
     for field in required_fields:
         if field not in payload:
@@ -48,10 +47,7 @@ def add_delivery(payload: dict, request: Request):
     delivery_qty = payload["delivery_quantity"]
     amount_received = payload["total_amount_received"]
 
-    delivery_date = payload.get(
-        "delivery_date",
-        date.today().strftime("%Y-%m-%d")
-    )
+    delivery_date = payload.get("delivery_date", date.today().strftime("%Y-%m-%d"))
 
     if delivery_qty <= 0:
         raise HTTPException(400, "Delivery quantity must be positive")
@@ -60,11 +56,13 @@ def add_delivery(payload: dict, request: Request):
         raise HTTPException(400, "Amount received cannot be negative")
 
     # Fetch order
-    order_res = supabase.table("orders") \
-        .select("*") \
-        .eq("order_id", order_id) \
-        .eq("org", org) \
+    order_res = (
+        supabase.table("orders")
+        .select("*")
+        .eq("order_id", order_id)
+        .eq("org", org)
         .execute()
+    )
 
     if not order_res.data:
         raise HTTPException(404, "Order not found")
@@ -74,16 +72,10 @@ def add_delivery(payload: dict, request: Request):
     remaining_qty = order["quantity"] - order["delivered_quantity"]
 
     if delivery_qty > remaining_qty:
-        raise HTTPException(
-            400,
-            "Delivery quantity exceeds remaining quantity"
-        )
+        raise HTTPException(400, "Delivery quantity exceeds remaining quantity")
 
     if amount_received > order["pending_amount"]:
-        raise HTTPException(
-            400,
-            "Amount received exceeds pending amount"
-        )
+        raise HTTPException(400, "Amount received exceeds pending amount")
 
     delivery_id = get_next_delivery_id(order_id, org)
 
@@ -99,7 +91,7 @@ def add_delivery(payload: dict, request: Request):
         "file_name": payload.get("file_name"),
         "upload_date": payload.get("upload_date"),
         "resource_type": payload.get("resource_type"),
-        "custom_data": payload.get("custom_data", {})
+        "custom_data": payload.get("custom_data", {}),
     }
 
     # Insert delivery
@@ -114,22 +106,20 @@ def add_delivery(payload: dict, request: Request):
         if new_pending_amount == 0 and new_delivered_qty == order["quantity"]
         else "Pending"
     )
-   
 
-    supabase.table("orders").update({
-        "delivered_quantity": new_delivered_qty,
-        "pending_amount": new_pending_amount,
-        "status": new_status
-    }).eq("order_id", order_id).eq("org", org).execute()
+    supabase.table("orders").update(
+        {
+            "delivered_quantity": new_delivered_qty,
+            "pending_amount": new_pending_amount,
+            "status": new_status,
+        }
+    ).eq("order_id", order_id).eq("org", org).execute()
 
     logger.info(
         f"Delivery added | Order: {order_id} | Delivery ID: {delivery_id} | Org: {org}"
     )
 
-    return {
-        "message": "Delivery added successfully",
-        "delivery_id": delivery_id
-    }
+    return {"message": "Delivery added successfully", "delivery_id": delivery_id}
 
 
 # -------------------------------------------------
@@ -143,12 +133,14 @@ def list_deliveries(order_id: int, request: Request):
 
     org = require_login(request)
 
-    res = supabase.table("deliveries") \
-        .select("*") \
-        .eq("order_id", order_id) \
-        .eq("org", org) \
-        .order("delivery_id") \
+    res = (
+        supabase.table("deliveries")
+        .select("*")
+        .eq("order_id", order_id)
+        .eq("org", org)
+        .order("delivery_id")
         .execute()
+    )
 
     return res.data
 
@@ -165,12 +157,14 @@ def delete_delivery(order_id: int, delivery_id: int, request: Request):
 
     org = require_login(request)
 
-    delivery_res = supabase.table("deliveries") \
-        .select("*") \
-        .eq("order_id", order_id) \
-        .eq("delivery_id", delivery_id) \
-        .eq("org", org) \
+    delivery_res = (
+        supabase.table("deliveries")
+        .select("*")
+        .eq("order_id", order_id)
+        .eq("delivery_id", delivery_id)
+        .eq("org", org)
         .execute()
+    )
 
     if not delivery_res.data:
         raise HTTPException(404, "Delivery not found")
@@ -178,11 +172,13 @@ def delete_delivery(order_id: int, delivery_id: int, request: Request):
     delivery = delivery_res.data[0]
 
     # Fetch order
-    order_res = supabase.table("orders") \
-        .select("*") \
-        .eq("order_id", order_id) \
-        .eq("org", org) \
+    order_res = (
+        supabase.table("orders")
+        .select("*")
+        .eq("order_id", order_id)
+        .eq("org", org)
         .execute()
+    )
 
     order = order_res.data[0]
 
@@ -190,7 +186,7 @@ def delete_delivery(order_id: int, delivery_id: int, request: Request):
     if delivery.get("public_id"):
         delete_file(
             public_id=delivery["public_id"],
-            resource_type=delivery.get("resource_type", "auto")
+            resource_type=delivery.get("resource_type", "auto"),
         )
 
     # Rollback calculations
@@ -203,21 +199,19 @@ def delete_delivery(order_id: int, delivery_id: int, request: Request):
         else "Pending"
     )
 
-
     # Delete delivery record
-    supabase.table("deliveries") \
-        .delete() \
-        .eq("order_id", order_id) \
-        .eq("delivery_id", delivery_id) \
-        .eq("org", org) \
-        .execute()
+    supabase.table("deliveries").delete().eq("order_id", order_id).eq(
+        "delivery_id", delivery_id
+    ).eq("org", org).execute()
 
     # Update order
-    supabase.table("orders").update({
-        "delivered_quantity": new_delivered_qty,
-        "pending_amount": new_pending_amount,
-        "status": new_status
-    }).eq("order_id", order_id).eq("org", org).execute()
+    supabase.table("orders").update(
+        {
+            "delivered_quantity": new_delivered_qty,
+            "pending_amount": new_pending_amount,
+            "status": new_status,
+        }
+    ).eq("order_id", order_id).eq("org", org).execute()
 
     logger.warning(
         f"Delivery deleted | Order: {order_id} | Delivery ID: {delivery_id} | Org: {org}"

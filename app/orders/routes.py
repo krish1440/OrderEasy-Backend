@@ -6,6 +6,7 @@ from app.core.logger import get_logger
 router = APIRouter()
 logger = get_logger(__name__)
 
+
 # -------------------------------------------------
 # Helper: Calculate Order Amounts
 # -------------------------------------------------
@@ -20,28 +21,35 @@ def calculate_amounts(quantity: int, price: float, gst: float, advance: float):
 # Helper: Get next order_id per org
 # -------------------------------------------------
 def get_next_order_id(org: str) -> int:
-    res = supabase.table("orders") \
-        .select("order_id") \
-        .eq("org", org) \
-        .order("order_id", desc=True) \
-        .limit(1) \
+    res = (
+        supabase.table("orders")
+        .select("order_id")
+        .eq("org", org)
+        .order("order_id", desc=True)
+        .limit(1)
         .execute()
+    )
 
     return res.data[0]["order_id"] + 1 if res.data else 1
+
 
 # -------------------------------------------------
 # 1️⃣ CREATE ORDER
 # -------------------------------------------------
 @router.post("/")
 def create_order(payload: dict, request: Request):
-
     print(f"DEBUG HEADERS: {request.headers}", flush=True)
     org = require_login(request)
 
     required_fields = [
-        "receiver_name", "date",
-        "expected_delivery_date", "product",
-        "quantity", "price", "gst", "advance_payment"
+        "receiver_name",
+        "date",
+        "expected_delivery_date",
+        "product",
+        "quantity",
+        "price",
+        "gst",
+        "advance_payment",
     ]
 
     for field in required_fields:
@@ -60,20 +68,14 @@ def create_order(payload: dict, request: Request):
         raise HTTPException(400, "Quantity must be positive")
 
     if price < 0 or gst < 0 or advance < 0:
-        raise HTTPException(
-            400,
-            "Price, GST, and advance payment must be non-negative"
-        )
+        raise HTTPException(400, "Price, GST, and advance payment must be non-negative")
 
     basic_price, total_with_gst, pending_amount = calculate_amounts(
         quantity, price, gst, advance
     )
 
     if advance > total_with_gst:
-        raise HTTPException(
-            400,
-            "Advance payment cannot exceed total order amount"
-        )
+        raise HTTPException(400, "Advance payment cannot exceed total order amount")
 
     order_data = {
         "order_id": order_id,
@@ -94,7 +96,7 @@ def create_order(payload: dict, request: Request):
         "created_by": org,
         "delivered_quantity": 0,
         "url": payload.get("url"),
-        "custom_data": payload.get("custom_data", {})
+        "custom_data": payload.get("custom_data", {}),
     }
 
     try:
@@ -114,11 +116,13 @@ def create_order(payload: dict, request: Request):
 def list_orders(request: Request):
     org = require_login(request)
 
-    res = supabase.table("orders") \
-        .select("*") \
-        .eq("org", org) \
-        .order("date", desc=True) \
+    res = (
+        supabase.table("orders")
+        .select("*")
+        .eq("org", org)
+        .order("date", desc=True)
         .execute()
+    )
 
     return res.data
 
@@ -130,11 +134,13 @@ def list_orders(request: Request):
 def get_order(order_id: int, request: Request):
     org = require_login(request)
 
-    res = supabase.table("orders") \
-        .select("*") \
-        .eq("order_id", order_id) \
-        .eq("org", org) \
+    res = (
+        supabase.table("orders")
+        .select("*")
+        .eq("order_id", order_id)
+        .eq("org", org)
         .execute()
+    )
 
     if not res.data:
         raise HTTPException(404, "Order not found")
@@ -147,14 +153,15 @@ def get_order(order_id: int, request: Request):
 # -------------------------------------------------
 @router.put("/{order_id}")
 def update_order(order_id: int, payload: dict, request: Request):
-
     org = require_login(request)
 
-    res = supabase.table("orders") \
-        .select("*") \
-        .eq("order_id", order_id) \
-        .eq("org", org) \
+    res = (
+        supabase.table("orders")
+        .select("*")
+        .eq("order_id", order_id)
+        .eq("org", org)
         .execute()
+    )
 
     if not res.data:
         raise HTTPException(404, "Order not found")
@@ -170,26 +177,17 @@ def update_order(order_id: int, payload: dict, request: Request):
         raise HTTPException(400, "Quantity must be positive")
 
     if new_price < 0 or new_gst < 0 or new_advance < 0:
-        raise HTTPException(
-            400,
-            "Price, GST, and advance payment must be non-negative"
-        )
+        raise HTTPException(400, "Price, GST, and advance payment must be non-negative")
 
     if new_quantity < order["delivered_quantity"]:
-        raise HTTPException(
-            400,
-            "Quantity cannot be less than delivered quantity"
-        )
+        raise HTTPException(400, "Quantity cannot be less than delivered quantity")
 
     basic_price, total_with_gst, _ = calculate_amounts(
         new_quantity, new_price, new_gst, new_advance
     )
 
     if new_advance > total_with_gst:
-        raise HTTPException(
-            400,
-            "Advance payment cannot exceed total order amount"
-        )
+        raise HTTPException(400, "Advance payment cannot exceed total order amount")
 
     # ✅ CORRECT RECEIVED MONEY CALCULATION
     delivered_payments = (
@@ -204,17 +202,13 @@ def update_order(order_id: int, payload: dict, request: Request):
     pending_amount = total_with_gst - new_advance - delivered_payments
 
     if pending_amount < 0:
-        raise HTTPException(
-            400,
-            "Update results in negative pending amount"
-        )
+        raise HTTPException(400, "Update results in negative pending amount")
 
     update_data = {
         "receiver_name": payload.get("receiver_name", order["receiver_name"]),
         "date": payload.get("date", order["date"]),
         "expected_delivery_date": payload.get(
-            "expected_delivery_date",
-            order["expected_delivery_date"]
+            "expected_delivery_date", order["expected_delivery_date"]
         ),
         "product": payload.get("product", order["product"]),
         "description": payload.get("description", order["description"]),
@@ -227,14 +221,12 @@ def update_order(order_id: int, payload: dict, request: Request):
         "pending_amount": pending_amount,
         "status": "Completed" if pending_amount == 0 else "Pending",
         "url": payload.get("url", order.get("url")),
-        "custom_data": payload.get("custom_data", order.get("custom_data", {}))
+        "custom_data": payload.get("custom_data", order.get("custom_data", {})),
     }
 
-    supabase.table("orders") \
-        .update(update_data) \
-        .eq("order_id", order_id) \
-        .eq("org", org) \
-        .execute()
+    supabase.table("orders").update(update_data).eq("order_id", order_id).eq(
+        "org", org
+    ).execute()
 
     logger.info(f"Order updated: {order_id} | Org: {org}")
     return {"message": "Order updated successfully"}
@@ -245,23 +237,20 @@ def update_order(order_id: int, payload: dict, request: Request):
 # -------------------------------------------------
 @router.delete("/{order_id}")
 def delete_order(order_id: int, request: Request):
-
     org = require_login(request)
 
-    res = supabase.table("orders") \
-        .select("order_id") \
-        .eq("order_id", order_id) \
-        .eq("org", org) \
+    res = (
+        supabase.table("orders")
+        .select("order_id")
+        .eq("order_id", order_id)
+        .eq("org", org)
         .execute()
+    )
 
     if not res.data:
         raise HTTPException(404, "Order not found")
 
-    supabase.table("orders") \
-        .delete() \
-        .eq("order_id", order_id) \
-        .eq("org", org) \
-        .execute()
+    supabase.table("orders").delete().eq("order_id", order_id).eq("org", org).execute()
 
     logger.warning(f"Order deleted: {order_id} | Org: {org}")
     return {"message": "Order deleted successfully"}

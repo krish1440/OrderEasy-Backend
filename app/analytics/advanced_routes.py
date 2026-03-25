@@ -11,11 +11,29 @@ router = APIRouter()
 # -------------------------------------------------
 # Helpers
 # -------------------------------------------------
-def month_key(date_str: str):
+def month_key(date_str: str) -> str:
+    """
+    Extracts the YYYY-MM month key from a date string.
+    
+    Args:
+        date_str (str): The input date string.
+        
+    Returns:
+        str: The extracted YYYY-MM string.
+    """
     return date_str[:7]
 
 
-def year_key(date_str: str):
+def year_key(date_str: str) -> str:
+    """
+    Extracts the YYYY year key from a date string.
+    
+    Args:
+        date_str (str): The input date string.
+        
+    Returns:
+        str: The extracted YYYY string.
+    """
     return date_str[:4]
 
 
@@ -23,7 +41,19 @@ def year_key(date_str: str):
 # 1️⃣ CURRENT MONTH DASHBOARD METRICS
 # -------------------------------------------------
 @router.get("/dashboard/current-month")
-def current_month_metrics(request: Request):
+def current_month_metrics(request: Request) -> dict:
+    """
+    Calculates operational metrics specifically for the current calendar month.
+    
+    Provides real-time snapshots of total orders, fulfillment status, and 
+    delivery volume to track monthly performance against targets.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A summary of current month performance metrics.
+    """
     org = require_login(request)
     current_month = datetime.date.today().strftime("%Y-%m")
 

@@ -39,7 +39,17 @@ def validate_password(password: str) -> None:
 # -------------------------------------------------
 def hash_password(password: str) -> str:
     """
-    Hashes password using bcrypt.
+    Computes a cryptographically secure hash for a plain-text password.
+    
+    Utilizes `bcrypt` with a generated salt for defensive salt-hashing, 
+    making it computationally expensive for brute-force or dictionary 
+    attacks.
+    
+    Args:
+        password (str): The plain-text password to hash.
+        
+    Returns:
+        str: The resulting salt-hashed password string.
     """
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 

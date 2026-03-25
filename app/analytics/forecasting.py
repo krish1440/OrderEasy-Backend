@@ -115,10 +115,22 @@ def train_model(df: pd.DataFrame) -> tuple[HuberRegressor, float, np.ndarray, np
 # -------------------------------------------------
 # Helper: Confidence Interval
 # -------------------------------------------------
-def confidence_interval(y_log, y_pred_log, alpha=0.20):
+def confidence_interval(
+    y_log: np.ndarray, y_pred_log: np.ndarray, alpha: float = 0.20
+) -> float:
     """
-    Computes 80% confidence interval on the LOG scale.
-    (Business Standard vs Scientific 95%)
+    Computes a statistical confidence interval for log-scale predictions.
+    
+    Determines the uncertainty bound based on standard error and t-distribution 
+    to provide the upper and lower ranges for business forecasts.
+    
+    Args:
+        y_log (np.ndarray): The actual log-transformed data.
+        y_pred_log (np.ndarray): The predicted log-scale values.
+        alpha (float): Scaling factor for the confidence level (0.2 for 80%).
+        
+    Returns:
+        float: The range value to add/subtract from predictions.
     """
     n = len(y_log)
     if n < 3:

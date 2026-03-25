@@ -22,9 +22,20 @@ logger = get_logger(__name__)
 # -------------------------------------------------
 def get_monthly_revenue(org: str) -> pd.DataFrame:
     """
-    Returns DataFrame with columns:
-    [month_date, revenue]
-    Aggregated by Month (First day of month)
+    Fetches and aggregates historical revenue data on a monthly basis.
+    
+    Retrieves all order records for the organization, converts dates to 
+    timestamps, and groups them by the first day of each month for 
+    time-series analysis.
+    
+    Args:
+        org (str): The organization's unique identifier.
+        
+    Returns:
+        pd.DataFrame: A DataFrame with 'month_date' and 'total_amount_with_gst'.
+        
+    Raises:
+        HTTPException: If no order data is available for the organization.
     """
 
     orders = (

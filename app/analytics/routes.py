@@ -550,7 +550,19 @@ def churn_retention(request: Request) -> list[dict]:
 # Returns the AOV per month
 # -------------------------------------------------
 @router.get("/aov-tracker")
-def aov_tracker(request: Request):
+def aov_tracker(request: Request) -> list[dict]:
+    """
+    Tracks the Average Order Value (AOV) trends over time.
+    
+    Provides monthly granularity on revenue per order to help monitor 
+    pricing and purchasing behavior shifts.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: Monthly AOV and revenue totals.
+    """
     org = require_login(request)
     orders = (
         supabase.table("orders")
@@ -591,7 +603,19 @@ def aov_tracker(request: Request):
 # Returns distribution of 1-trip vs 2-trip vs 3+ trip orders
 # -------------------------------------------------
 @router.get("/delivery-fragmentation")
-def delivery_fragmentation(request: Request):
+def delivery_fragmentation(request: Request) -> list[dict]:
+    """
+    Analyzes delivery efficiency by counting trips per order.
+    
+    Categorizes orders into buckets (1 trip, 2 trips, 3+ trips) to 
+    highlight fulfillment fragmentation and potential shipping overhead.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: Distribution data for trip buckets.
+    """
     org = require_login(request)
 
     # We only care about orders that have at least some completed deliveries
@@ -632,7 +656,19 @@ def delivery_fragmentation(request: Request):
 # Returns unpaid units vs unpaid INR for active/pending orders
 # -------------------------------------------------
 @router.get("/revenue-held-hostage")
-def revenue_held_hostage(request: Request):
+def revenue_held_hostage(request: Request) -> list[dict]:
+    """
+    Tracks revenue tied up in delivered but unpaid inventory.
+    
+    Identifies 'pending' orders where items have been shipped but 
+    payments are still outstanding, helping with cash flow analysis.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: Monthly metrics for unpaid units and held revenue.
+    """
     org = require_login(request)
 
     # Fetch orders where status is STILL pending, but they HAVE delivered something
@@ -676,7 +712,16 @@ def revenue_held_hostage(request: Request):
 # 2️⃣ MONTHLY REVENUE TREND
 # -------------------------------------------------
 @router.get("/revenue/monthly")
-def monthly_revenue(request: Request):
+def monthly_revenue(request: Request) -> dict:
+    """
+    Calculates historical monthly revenue trends.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A sorted dictionary of monthly revenue totals (YYYY-MM).
+    """
     """
     Monthly revenue trend.
     """
@@ -702,7 +747,16 @@ def monthly_revenue(request: Request):
 # 3️⃣ MONTHLY QUANTITY TREND
 # -------------------------------------------------
 @router.get("/quantity/monthly")
-def monthly_quantity(request: Request):
+def monthly_quantity(request: Request) -> dict:
+    """
+    Tracks monthly quantity of units delivered.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A sorted dictionary of monthly delivery volumes (YYYY-MM).
+    """
     """
     Monthly delivered quantity trend.
     """
@@ -728,7 +782,16 @@ def monthly_quantity(request: Request):
 # 4️⃣ TOP RECEIVERS (BY REVENUE & QUANTITY)
 # -------------------------------------------------
 @router.get("/receivers/top")
-def top_receivers(request: Request):
+def top_receivers(request: Request) -> dict:
+    """
+    Identifies highest-performing customers by both revenue and volume.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: Top receiver lists categorized by revenue and quantity.
+    """
     """
     Top receivers by revenue and quantity.
     """
@@ -760,7 +823,19 @@ def top_receivers(request: Request):
 # 5️⃣ PRODUCT ANALYTICS
 # -------------------------------------------------
 @router.get("/products/top")
-def product_analytics(request: Request):
+def product_analytics(request: Request) -> dict:
+    """
+    Aggregates product-level performance data with case-insensitive grouping.
+    
+    Unified product names are used to provide accurate stats on revenue, 
+    quantity, and frequency for every SKU in the inventory.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A sorted list of product performance objects.
+    """
     """
     Top products by quantity and revenue with case-insensitive grouping.
     """
@@ -798,7 +873,16 @@ def product_analytics(request: Request):
 # 6️⃣ CUSTOMER LIFETIME VALUE (CLV)
 # -------------------------------------------------
 @router.get("/customers/clv")
-def customer_lifetime_value(request: Request):
+def customer_lifetime_value(request: Request) -> dict:
+    """
+    Calculates the Lifetime Value (CLV) stats for every customer.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: CLV metrics including total value and age in months.
+    """
     """
     CLV per receiver.
     """
@@ -840,7 +924,16 @@ def customer_lifetime_value(request: Request):
 # 7️⃣ CUSTOMER RETENTION
 # -------------------------------------------------
 @router.get("/customers/retention")
-def customer_retention(request: Request):
+def customer_retention(request: Request) -> dict:
+    """
+    Calculates the repeat customer rate for the organization.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: Summary statistics including repeat rate percentage.
+    """
     """
     Repeat customer rate.
     """

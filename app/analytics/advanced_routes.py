@@ -313,7 +313,19 @@ def top_customers_by_order_size(request: Request) -> dict:
 # 8️⃣ DELIVERY PERFORMANCE METRICS
 # -------------------------------------------------
 @router.get("/metrics/delivery-performance")
-def delivery_performance_metrics(request: Request):
+def delivery_performance_metrics(request: Request) -> dict:
+    """
+    Summarizes key operational delivery performance indicators.
+    
+    Provides aggregate totals for units shipped and revenue collected across 
+    all deliveries for the organization.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A collection of operational delivery metrics.
+    """
     org = require_login(request)
 
     # Fetch Data
@@ -337,7 +349,19 @@ def delivery_performance_metrics(request: Request):
 # 9️⃣ DELIVERY SIZE DISTRIBUTION (HISTOGRAM)
 # -------------------------------------------------
 @router.get("/charts/delivery-distribution")
-def delivery_distribution(request: Request):
+def delivery_distribution(request: Request) -> list[dict]:
+    """
+    Computes a histogram distribution of delivery batch sizes.
+    
+    Categorizes shipments into volume ranges (e.g., 0-10, 10-20) to help 
+    visualize the most common shipment scales.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: A list of count-per-range objects for the histogram.
+    """
     org = require_login(request)
 
     dels = (
@@ -371,7 +395,16 @@ def delivery_distribution(request: Request):
 # 🔟 REVENUE SCATTER PLOT
 # -------------------------------------------------
 @router.get("/charts/scatter-revenue-qty")
-def scatter_revenue_qty(request: Request):
+def scatter_revenue_qty(request: Request) -> list[dict]:
+    """
+    Provides data for a scatter plot comparing order quantity and revenue.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: A list of orders with quantity, revenue, and product name.
+    """
     org = require_login(request)
 
     orders = (
@@ -397,7 +430,16 @@ def scatter_revenue_qty(request: Request):
 # 1️⃣1️⃣ DELIVERY HEATMAP
 # -------------------------------------------------
 @router.get("/charts/delivery-heatmap")
-def delivery_heatmap(request: Request):
+def delivery_heatmap(request: Request) -> list[dict]:
+    """
+    Aggregates delivery frequency by date for heatmap visualization.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: A time-series list of delivery counts per date.
+    """
     org = require_login(request)
 
     dels = (
@@ -421,7 +463,19 @@ def delivery_heatmap(request: Request):
 # 1️⃣2️⃣ EXPECTED DELIVERY SCHEDULE (PENDING ONLY)
 # -------------------------------------------------
 @router.get("/charts/expected-delivery-schedule")
-def expected_delivery_schedule(request: Request):
+def expected_delivery_schedule(request: Request) -> list[dict]:
+    """
+    Generates a schedule of projected future delivery volumes based on pending orders.
+    
+    Calculates the remaining quantity to be delivered for all pending 
+    orders and groups them by their expected delivery date.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: A time-series schedule of projected unit volumes.
+    """
     org = require_login(request)
 
     # Fetch only PENDING orders — also grab delivered_quantity so we can compute remaining

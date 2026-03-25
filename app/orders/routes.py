@@ -10,9 +10,7 @@ logger = get_logger(__name__)
 # -------------------------------------------------
 # Helper: Calculate Order Amounts
 # -------------------------------------------------
-def calculate_amounts(
-    quantity: int, price: float, gst: float, advance: float
-) -> tuple[float, float, float]:
+def calculate_amounts(quantity: int, price: float, gst: float, advance: float) -> tuple[float, float, float]:
     """
     Calculates essential order amounts including basic price, total with GST, and pending balance.
 
@@ -61,6 +59,18 @@ def get_next_order_id(org: str) -> int:
 # -------------------------------------------------
 @router.post("/")
 def create_order(payload: dict, request: Request):
+    """
+    Creates a new order for the organization.
+    
+    Validates all required fields, calculates totals, and handles database insertion.
+    
+    Args:
+        payload (dict): The order details from the request body.
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A success message and order confirmation.
+    """
     print(f"DEBUG HEADERS: {request.headers}", flush=True)
     org = require_login(request)
 
@@ -137,6 +147,15 @@ def create_order(payload: dict, request: Request):
 # -------------------------------------------------
 @router.get("/")
 def list_orders(request: Request):
+    """
+    Retrieves a list of all orders belonging to the logged-in organization.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list: A list of order records sorted by date.
+    """
     org = require_login(request)
 
     res = (

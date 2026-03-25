@@ -148,11 +148,21 @@ def confidence_interval(
 # 🔮 FORECAST ENDPOINT (12 MONTHS)
 # -------------------------------------------------
 @router.get("/forecast")
-def revenue_forecast(request: Request):
+def revenue_forecast(request: Request) -> dict:
     """
+    Generates a 12-month revenue forecast using advanced seasonal harmonics.
+    
+    This endpoint orchestrates the entire forecasting pipeline:
+    1. Aggregates monthly historical revenue.
+    2. Trains a robust regression model with seasonal components.
+    3. Projects future performance with 80% confidence intervals.
+    4. Returns a combined view of historical and predicted data.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
     Returns:
-    - 12-month "Advanced" forecast (Trend + Seasonality)
-    - 80% Confidence Interval
+        dict: A comprehensive report containing R2 score, history, and forecast.
     """
 
     org = require_login(request)
@@ -177,7 +187,17 @@ def revenue_forecast(request: Request):
     # Predict Next 12 Months
     forecast = []
 
-    def add_months(source_date, months):
+    def add_months(source_date: datetime, months: int) -> datetime:
+        """
+        Calculates a future date by adding a specific number of months.
+        
+        Args:
+            source_date (datetime): The starting date.
+            months (int): The number of months to add.
+            
+        Returns:
+            datetime: The resulting date at the first of the month.
+        """
         month = source_date.month - 1 + months
         year = source_date.year + month // 12
         month = month % 12 + 1

@@ -174,6 +174,16 @@ def list_orders(request: Request):
 # -------------------------------------------------
 @router.get("/{order_id}")
 def get_order(order_id: int, request: Request):
+    """
+    Retrieves the full details of a specific order by its ID.
+    
+    Args:
+        order_id (int): The ID of the order to retrieve.
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: The order details.
+    """
     org = require_login(request)
 
     res = (
@@ -195,6 +205,19 @@ def get_order(order_id: int, request: Request):
 # -------------------------------------------------
 @router.put("/{order_id}")
 def update_order(order_id: int, payload: dict, request: Request):
+    """
+    Updates an existing order with new details.
+    
+    Performs complex recalulation of totals and pending amounts based on current state.
+    
+    Args:
+        order_id (int): The ID of the order to update.
+        payload (dict): The fields to update.
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A success message.
+    """
     org = require_login(request)
 
     res = (
@@ -279,6 +302,16 @@ def update_order(order_id: int, payload: dict, request: Request):
 # -------------------------------------------------
 @router.delete("/{order_id}")
 def delete_order(order_id: int, request: Request):
+    """
+    Permanently deletes an order record from the system.
+    
+    Args:
+        order_id (int): The ID of the order to delete.
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A success message.
+    """
     org = require_login(request)
 
     res = (

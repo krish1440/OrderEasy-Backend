@@ -285,34 +285,27 @@ def forgot_password(body: ForgotPasswordSchema):
     Expects redirect_to to point back to the frontend (e.g., http://localhost:3000/#/reset-password).
     """
     try:
-        # 1. Check if the email exists in our local users table
-        user = (
-            supabase.table("users")
-            .select("email")
-            .eq("email", body.email)
-            .execute()
-            .data
-        )
-        if not user:
-            # We still return success to prevent email enumeration attacks
-            return {
-                "message": "If an account with that email exists, we have sent a reset link"
-            }
-
-        # 2. Call Supabase reset password endpoint
+        # 1. Trigger Supabase to send a password reset email.
+        # Supabase will handle checking if the user exists in its Auth system.
         response = supabase.auth.reset_password_for_email(
             body.email, options={"redirect_to": body.redirect_to}
         )
 
-        logger.info(f"Password reset requested for {body.email}")
+        # 2. Check for errors in the Supabase response
+        if hasattr(response, "error") and response.error:
+            logger.error(f"Supabase reset error for {body.email}: {response.error}")
+            # We still return success to prevent email enumeration,
+            # but we log the error for debugging.
+
+        logger.info(f"Password reset triggered for {body.email}")
         return {
-            "message": "If an account with that email exists, we have sent a reset link"
+            "message": "If an account with that email exists, we have sent a reset link to it."
         }
     except Exception as e:
         logger.error(f"Failed to process forgot password for {body.email}: {str(e)}")
         # Generic error message to prevent enumeration
         return {
-            "message": "If an account with that email exists, we have sent a reset link"
+            "message": "If an account with that email exists, we have sent a reset link to it."
         }
 
 

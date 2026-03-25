@@ -13,7 +13,7 @@ async def upload(request: Request, file: UploadFile = File(...)):
     Generic file upload endpoint.
     Returns Cloudinary metadata (url, public_id, etc.)
     """
-    _ = require_login(request)
+    org = require_login(request)
 
     if not file:
         raise HTTPException(400, "No file provided")

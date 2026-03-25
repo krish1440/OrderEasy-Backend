@@ -31,9 +31,21 @@ class SignupSchema(BaseModel):
 # 1️⃣ SEND OTP
 # -------------------------------------------------
 @router.post("/send-otp")
-def send_otp(body: SendOtpSchema):
+def send_otp(body: SendOtpSchema) -> dict:
     """
-    Triggers Supabase to send an OTP to the provided email.
+    Initiates the One-Time Password (OTP) flow via Supabase Auth.
+    
+    Sends a verification code to the user's email address which is 
+    required for subsequent organization registration.
+    
+    Args:
+        body (SendOtpSchema): The schema containing the destination email.
+        
+    Returns:
+        dict: A success message.
+        
+    Raises:
+        HTTPException: If the OTP service fails or email is invalid.
     """
     try:
         # Supabase signInWithOtp sends an email with the OTP code
@@ -56,11 +68,22 @@ def send_otp(body: SendOtpSchema):
 # 2️⃣ ORGANIZATION SIGNUP (WITH OTP VERIFICATION)
 # -------------------------------------------------
 @router.post("/signup")
-def signup(body: SignupSchema):
+def signup(body: SignupSchema) -> dict:
     """
-    Registers a new organization after verifying OTP.
-    Step 1: Verify OTP with Supabase.
-    Step 2: Create user in local DB.
+    Registers a new organization following successful OTP verification.
+    
+    This is a two-step process:
+    1. Validates the OTP token with Supabase Auth.
+    2. Persists the organization and user credentials to the local database.
+    
+    Args:
+        body (SignupSchema): The registration details including OTP and credentials.
+        
+    Returns:
+        dict: A success message confirming registration.
+        
+    Raises:
+        HTTPException: If OTP is invalid, username exists, or password is weak.
     """
     username = body.username
     password = body.password
@@ -110,10 +133,22 @@ def signup(body: SignupSchema):
 # 2️⃣ LOGIN (ORG + ADMIN) — SAFE VERSION
 # -------------------------------------------------
 @router.post("/login")
-def login(request: Request, body: LoginSchema):
+def login(request: Request, body: LoginSchema) -> dict:
     """
-    Login for organization or admin.
-    Never throws 500.
+    Authenticates an organization user or a system administrator.
+    
+    Checks credentials against both the hardcoded admin config and 
+    the local users table. On success, initializes a secure session.
+    
+    Args:
+        request (Request): The FastAPI request object for session management.
+        body (LoginSchema): The login credentials.
+        
+    Returns:
+        dict: A success message.
+        
+    Raises:
+        HTTPException: If authentication fails for any reason.
     """
     username = body.username
     password = body.password
@@ -153,7 +188,16 @@ def login(request: Request, body: LoginSchema):
 # 3️⃣ LOGOUT
 # -------------------------------------------------
 @router.post("/logout")
-def logout(request: Request):
+def logout(request: Request) -> dict:
+    """
+    Terminates the current user session.
+    
+    Args:
+        request (Request): The FastAPI request object to clear the session.
+        
+    Returns:
+        dict: A success message.
+    """
     request.session.clear()
     return {"message": "Logged out successfully"}
 

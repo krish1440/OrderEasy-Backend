@@ -7,11 +7,18 @@ import re
 # -------------------------------------------------
 def validate_password(password: str) -> None:
     """
-    Enforces password rules:
-    - Minimum 6 characters
-    - At least 1 letter
-    - At least 1 digit
-    - At least 1 special character
+    Enforces organizational security policies for password complexity.
+    
+    Validation criteria:
+    - Length: Minimum 6 characters.
+    - Complexity: Must contain at least one letter, one digit, and one 
+      special character (e.g., !, @, #).
+    
+    Args:
+        password (str): The plain-text password to validate.
+        
+    Raises:
+        ValueError: If the password fails any complexity or length check.
     """
 
     if len(password) < 6:

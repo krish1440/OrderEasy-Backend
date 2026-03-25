@@ -92,16 +92,20 @@ def rfm_segmentation(request: Request) -> dict:
     rfm.columns = ["recency", "frequency", "monetary"]
 
     # -------------------------------------------------
-    # Scoring (Quartiles)
+    # 3. Scoring (Quartiles)
     # -------------------------------------------------
+    # R: 1 (Worst) to 4 (Best - Most Recent)
     rfm["R_score"] = pd.qcut(rfm["recency"], 4, labels=[4, 3, 2, 1])
-
+    
+    # F: 1 (Worst) to 4 (Best - Most Frequent)
     rfm["F_score"] = pd.qcut(
         rfm["frequency"].rank(method="first"), 4, labels=[1, 2, 3, 4]
     )
-
+    
+    # M: 1 (Worst) to 4 (Best - Highest Spending)
     rfm["M_score"] = pd.qcut(rfm["monetary"], 4, labels=[1, 2, 3, 4])
-
+    
+    # Combined Score (3 to 12)
     rfm["RFM_Score"] = (
         rfm["R_score"].astype(int)
         + rfm["F_score"].astype(int)
@@ -109,9 +113,18 @@ def rfm_segmentation(request: Request) -> dict:
     )
 
     # -------------------------------------------------
-    # Segment Assignment
+    # 4. Segment Assignment
     # -------------------------------------------------
-    def segment(row):
+    def segment(row: pd.Series) -> str:
+        """
+        Maps a combined RFM score to a business-meaningful category.
+        
+        Args:
+            row (pd.Series): A row from the RFM DataFrame.
+            
+        Returns:
+            str: The segment identifier.
+        """
         if row["RFM_Score"] >= 10:
             return "VIP Customers"
         elif row["RFM_Score"] >= 8:

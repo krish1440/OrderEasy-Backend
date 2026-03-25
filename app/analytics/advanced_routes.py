@@ -82,7 +82,16 @@ def current_month_metrics(request: Request) -> dict:
 # 2️⃣ YEAR-WISE REVENUE SUMMARY
 # -------------------------------------------------
 @router.get("/revenue/yearly")
-def yearly_revenue(request: Request):
+def yearly_revenue(request: Request) -> dict:
+    """
+    Provides a historical breakdown of revenue by calendar year.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A dictionary mapping years (YYYY) to total revenue figures.
+    """
     org = require_login(request)
 
     orders = (
@@ -105,7 +114,16 @@ def yearly_revenue(request: Request):
 # 3️⃣ TOTAL REVENUE & AVERAGE ORDER VALUE
 # -------------------------------------------------
 @router.get("/revenue/summary")
-def revenue_summary(request: Request):
+def revenue_summary(request: Request) -> dict:
+    """
+    Calculates lifetime revenue totals and overall Average Order Value (AOV).
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: High-level financial summary including total revenue and mean order value.
+    """
     org = require_login(request)
 
     orders = (
@@ -129,7 +147,19 @@ def revenue_summary(request: Request):
 # 4️⃣ MONTH-OVER-MONTH GROWTH %
 # -------------------------------------------------
 @router.get("/revenue/mom-growth")
-def month_over_month_growth(request: Request):
+def month_over_month_growth(request: Request) -> dict:
+    """
+    Computes the percentage growth rate of revenue between consecutive months.
+    
+    This metric helps identify seasonal trends and business scaling velocity 
+    by comparing each month's revenue to its predecessor.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A mapping of months (YYYY-MM) to their respective percentage growth rates.
+    """
     org = require_login(request)
 
     orders = (

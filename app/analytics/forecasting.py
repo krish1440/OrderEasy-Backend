@@ -63,16 +63,20 @@ def get_monthly_revenue(org: str) -> pd.DataFrame:
 # -------------------------------------------------
 # Helper: Train Robust Regression Model (Log-Linear + Seasonal)
 # -------------------------------------------------
-def train_model(df: pd.DataFrame):
+def train_model(df: pd.DataFrame) -> tuple[HuberRegressor, float, np.ndarray, np.ndarray]:
     """
-    Trains Huber Regressor on Log-Transformed revenue with Seasonal Harmonics.
-
-    Model: log(y + 1) = w1*Time + w2*Sin(Month) + w3*Cos(Month) + c
-
-    This captures:
-    1. Trend (Time)
-    2. Seasonality (Sin/Cos) - "Months based analysis"
-    3. Positivity (Log)
+    Trains a robust Huber Regressor on log-transformed monthly revenue.
+    
+    This model captures:
+    1. Overall trend using a linear time index.
+    2. Seasonality using cyclic sine/cosine transformations of the month.
+    3. Robustness against outliers using the Huber objective function.
+    
+    Args:
+        df (pd.DataFrame): The monthly historical revenue data.
+        
+    Returns:
+        tuple: (fitted_model, r2_score, log_predictions, log_targets).
     """
 
     # Feature 1: Time Trend

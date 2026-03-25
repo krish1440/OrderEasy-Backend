@@ -302,9 +302,24 @@ def change_password(
     current_password: str,
     new_password: str,
     confirm_new_password: str,
-):
+) -> dict:
     """
-    Change password with full validation.
+    Updates the user's password following verification of their current password.
+    
+    Validates that the new password meets security requirements and differs 
+    from the current password.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        current_password (str): The existing password for verification.
+        new_password (str): The desired new password.
+        confirm_new_password (str): Confirmation of the new password.
+        
+    Returns:
+        dict: A success message.
+        
+    Raises:
+        HTTPException: If verification fails or passwords do not match.
     """
 
     org = require_login(request)
@@ -348,10 +363,19 @@ class ForgotPasswordSchema(BaseModel):
 
 
 @router.post("/forgot-password")
-def forgot_password(body: ForgotPasswordSchema):
+def forgot_password(body: ForgotPasswordSchema) -> dict:
     """
-    Sends a password reset email using Supabase Auth.
-    Expects redirect_to to point back to the frontend (e.g., http://localhost:3000/#/reset-password).
+    Triggers a secure password reset email flow via Supabase Auth.
+    
+    Directs the user to a frontend password reset page provided in the 
+    request payload. Returns a generic success message to prevent 
+    account enumeration discovery.
+    
+    Args:
+        body (ForgotPasswordSchema): The email and redirection target.
+        
+    Returns:
+        dict: A confirmation message.
     """
     try:
         # 1. Trigger Supabase to send a password reset email.
@@ -387,9 +411,21 @@ class ResetPasswordSchema(BaseModel):
 
 
 @router.post("/reset-password")
-def execute_reset_password(body: ResetPasswordSchema):
+def execute_reset_password(body: ResetPasswordSchema) -> dict:
     """
-    Executes the password reset using the token from the email.
+    Finalizes the password reset process using an email-verified access token.
+    
+    Updates the password in both the Supabase Auth system and the local 
+    users table to ensure consistency across the application.
+    
+    Args:
+        body (ResetPasswordSchema): The new password and the auth access token.
+        
+    Returns:
+        dict: A success message.
+        
+    Raises:
+        HTTPException: If the token is invalid or the update fails.
     """
     try:
         # Ensure password is valid length
@@ -433,9 +469,21 @@ def execute_reset_password(body: ResetPasswordSchema):
 # 6️⃣ DELETE ACCOUNT
 # -------------------------------------------------
 @router.delete("/delete-account")
-def delete_account(request: Request):
+def delete_account(request: Request) -> dict:
     """
-    Permanently deletes organization account.
+    Permanently deletes the organization's account and all associated local data.
+    
+    Warning: This action is irreversible and requires the user to be 
+    logged in. Admin accounts cannot be deleted via this endpoint.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A success message and permanent deletion warning.
+        
+    Raises:
+        HTTPException: If the user is an admin or is not logged in.
     """
 
     org = require_login(request)

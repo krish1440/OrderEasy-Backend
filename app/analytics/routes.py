@@ -264,7 +264,19 @@ def dashboard_summary(request: Request) -> dict:
 # Returns per-product: revenue, quantity, order count
 # -------------------------------------------------
 @router.get("/dashboard/product-bubble")
-def product_bubble_data(request: Request):
+def product_bubble_data(request: Request) -> list[dict]:
+    """
+    Computes data for the product revenue/quantity bubble chart.
+    
+    Groups order data by product name, calculating total revenue, total quantity, 
+    and total number of orders for the top 15 most profitable products.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: A list of product statistics for the bubble chart.
+    """
     org = require_login(request)
     orders = (
         supabase.table("orders")
@@ -294,7 +306,19 @@ def product_bubble_data(request: Request):
 # - If pending orders < 5: append recent completed orders to reach 5 total.
 # -------------------------------------------------
 @router.get("/dashboard/recent-activity")
-def recent_activity(request: Request):
+def recent_activity(request: Request) -> list[dict]:
+    """
+    Retrieves a prioritized feed of recent activity for the dashboard.
+    
+    Returns a minimum of 5 orders, prioritizing those with pending payments 
+    or deliveries, and filling the rest with recent completed orders.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: A formatted list of recent order activities.
+    """
     """Return recent activity orders.
 
     Rules:
@@ -376,7 +400,19 @@ def recent_activity(request: Request):
 # Returns recent deliveries with days_gap (Expected vs Actual)
 # -------------------------------------------------
 @router.get("/dashboard/fulfillment-gap")
-def fulfillment_gap(request: Request):
+def fulfillment_gap(request: Request) -> list[dict]:
+    """
+    Analyzes the gap between expected and actual delivery dates.
+    
+    Calculates the 'days_gap' for recent deliveries to help visualize 
+    operational fulfillment performance.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: A list of fulfillment statistics including date gaps.
+    """
     org = require_login(request)
     from datetime import datetime
 
@@ -446,7 +482,19 @@ def fulfillment_gap(request: Request):
 # Returns monthly counts of New vs Returning customers
 # -------------------------------------------------
 @router.get("/churn-retention")
-def churn_retention(request: Request):
+def churn_retention(request: Request) -> list[dict]:
+    """
+    Tracks monthly customer acquisition versus return behavior.
+    
+    Categorizes customers as 'New' or 'Returning' based on their order 
+    history to provide a clear view of business retention health.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        list[dict]: Monthly new vs returning customer counts.
+    """
     org = require_login(request)
     orders = (
         supabase.table("orders")

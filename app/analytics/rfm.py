@@ -137,8 +137,9 @@ def rfm_segmentation(request: Request) -> dict:
     rfm["segment"] = rfm.apply(segment, axis=1)
 
     # -------------------------------------------------
-    # Output Formatting
+    # 5. Output Formatting
     # -------------------------------------------------
+    # Group results by segment for frontend visualization
     segment_customers = defaultdict(list)
 
     for customer, row in rfm.iterrows():

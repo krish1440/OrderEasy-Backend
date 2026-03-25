@@ -33,13 +33,20 @@ SEGMENT_MEANINGS = {
 # 🔁 RFM CALCULATION
 # -------------------------------------------------
 @router.get("/rfm")
-def rfm_segmentation(request: Request):
+def rfm_segmentation(request: Request) -> dict:
     """
+    Performs Recency, Frequency, and Monetary (RFM) analysis on customer data.
+    
+    Segments customers into behavioral groups (VIP, Loyal, Occasional, At-Risk) 
+    using quartile-based statistical scoring. This analysis provides actionable 
+    insights for targeted marketing and retention strategies.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
     Returns:
-    - RFM table
-    - Customer segments
-    - Customer names per segment
-    - Segment explanations
+        dict: A comprehensive report with segment counts, customer lists, 
+              and the detailed RFM scoring table.
     """
 
     org = require_login(request)

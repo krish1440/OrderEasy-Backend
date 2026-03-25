@@ -252,7 +252,19 @@ def order_status_distribution(request: Request) -> dict:
 # 7️⃣ ORDER SIZE ANALYSIS (TOP 5 CUSTOMERS)
 # -------------------------------------------------
 @router.get("/orders/top-customers")
-def top_customers_by_order_size(request: Request):
+def top_customers_by_order_size(request: Request) -> dict:
+    """
+    Identifies the highest-value customers based on order size and frequency.
+    
+    Provides total, yearly, and monthly breakdowns of the top 5 customers 
+    by revenue, utilizing data analysis to highlight key business partners.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A structured report of top customers across multiple time periods.
+    """
     org = require_login(request)
 
     orders = (

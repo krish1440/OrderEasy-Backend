@@ -190,7 +190,19 @@ def month_over_month_growth(request: Request) -> dict:
 # 5️⃣ MONTHLY PENDING AMOUNT TREND
 # -------------------------------------------------
 @router.get("/pending/monthly")
-def monthly_pending_amount(request: Request):
+def monthly_pending_amount(request: Request) -> dict:
+    """
+    Tracks the total outstanding (pending) payment amounts over time.
+    
+    Provides a monthly view of uncollected revenue to help accounts 
+    receivable teams prioritize collections.
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A sorted mapping of months (YYYY-MM) to pending amounts.
+    """
     org = require_login(request)
 
     orders = (
@@ -213,7 +225,18 @@ def monthly_pending_amount(request: Request):
 # 6️⃣ ORDER STATUS DISTRIBUTION
 # -------------------------------------------------
 @router.get("/orders/status-distribution")
-def order_status_distribution(request: Request):
+def order_status_distribution(request: Request) -> dict:
+    """
+    Provides a count-based breakdown of orders by their current status.
+    
+    Helps visualize the overall pipeline health (e.g., Pending, Completed).
+    
+    Args:
+        request (Request): The FastAPI request object for authentication.
+        
+    Returns:
+        dict: A mapping of status labels (e.g., 'Completed') to order counts.
+    """
     org = require_login(request)
 
     orders = supabase.table("orders").select("status").eq("org", org).execute().data

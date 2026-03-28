@@ -59,7 +59,7 @@ Access the interactive API docs directly on Render:
 
 1. **Clone & Install**:
    ```bash
-   git clone [repository-url]
+   git clone https://github.com/krish1440/OrderEasy-Backend
    cd OrderEazy/Backend
    pip install -r requirements.txt
    ```

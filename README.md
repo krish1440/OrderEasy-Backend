@@ -73,3 +73,5 @@ Access the interactive API docs directly on Render:
    ```
 
 ---
+
+Built to empower Small & Medium Enterprises everywhere 🏢🏢

@@ -1,6 +1,7 @@
 """
 Enterprise Developer Portal UI Generator for OrderEasy Analytics Backend
 Serves a clean, modern API Hub at the root route `/` matching the Frontend UI Theme
+Includes complete End-to-End Route Specs: Inputs, Outputs, Response Schemas, and DB Logic
 """
 
 def get_api_portal_html() -> str:
@@ -18,7 +19,7 @@ def get_api_portal_html() -> str:
             --bg-body: #f8fafc;
             --bg-card: #ffffff;
             --bg-card-hover: #ffffff;
-            --bg-drawer: #f1f5f9;
+            --bg-drawer: #f8fafc;
             --border-color: #e2e8f0;
             --border-highlight: #cbd5e1;
             
@@ -422,13 +423,6 @@ def get_api_portal_html() -> str:
             gap: 0.6rem;
         }
 
-        .group-icon-svg {
-            width: 22px;
-            height: 22px;
-            color: var(--brand-primary);
-            stroke-width: 2;
-        }
-
         .route-card {
             background: white;
             border: 1px solid var(--border-color);
@@ -525,7 +519,7 @@ def get_api_portal_html() -> str:
             font-size: 0.9rem;
         }
 
-        /* Drawer */
+        /* Drawer Tabs */
         .route-drawer {
             background: #f8fafc;
             border-top: 1px solid var(--border-color);
@@ -537,16 +531,105 @@ def get_api_portal_html() -> str:
             display: block;
         }
 
-        .drawer-section-title {
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+        .drawer-tabs {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .drawer-tab {
+            font-size: 0.825rem;
+            font-weight: 600;
+            padding: 0.4rem 0.85rem;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .drawer-tab:hover {
+            background: rgba(0, 0, 0, 0.04);
             color: var(--brand-primary);
-            margin-bottom: 0.75rem;
+        }
+
+        .drawer-tab.active {
+            background: white;
+            color: var(--brand-primary);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Architecture Info Box */
+        .arch-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .arch-title {
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
             display: flex;
             align-items: center;
             gap: 0.4rem;
+            font-size: 0.825rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .db-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.775rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-right: 0.4rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .logic-step {
+            display: flex;
+            gap: 0.6rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .logic-step-num {
+            width: 22px;
+            height: 22px;
+            background: var(--brand-light);
+            color: var(--brand-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
         }
 
         /* Code blocks */
@@ -566,6 +649,10 @@ def get_api_portal_html() -> str:
             color: #38bdf8;
             white-space: pre-wrap;
             word-break: break-all;
+        }
+
+        .code-block-response {
+            color: #34d399;
         }
 
         .copy-code-btn {
@@ -742,7 +829,7 @@ def get_api_portal_html() -> str:
             <!-- Hero Banner -->
             <section class="hero-banner">
                 <h1 class="hero-title">Developer API Reference</h1>
-                <p class="hero-subtitle">Interactive documentation, query specifications, JSON request payload schemas, and operational endpoints for OrderEasy Analytics Engine.</p>
+                <p class="hero-subtitle">Complete end-to-end specifications: input parameters, JSON request payloads, return response schemas, backend logic, and database table architecture.</p>
 
                 <div class="stats-bar">
                     <div class="stat-item">
@@ -796,7 +883,7 @@ def get_api_portal_html() -> str:
         let activeMethod = 'ALL';
         let searchQuery = '';
 
-        // Meaningful SVG Icons for each module category
+        // Category Vector SVG Icons
         const categorySvgIcons = {
             'Authentication': '<svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>',
             'Orders': '<svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>',
@@ -809,6 +896,117 @@ def get_api_portal_html() -> str:
             'Uploads': '<svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>',
             'Admin': '<svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>',
             'Default': '<svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>'
+        };
+
+        // Backend Architecture & DB Working Logic Mapping per module
+        const backendLogicMapping = {
+            'Authentication': {
+                tables: ['users', 'user_sessions'],
+                auth: 'Optional / Login Public, Cookies for Session',
+                flow: [
+                    'Validates input credentials (email & password format)',
+                    'Queries Supabase database for user record',
+                    'Verifies hashed password using bcrypt algorithm',
+                    'Generates encrypted session token cookie and returns User DTO profile'
+                ]
+            },
+            'Orders': {
+                tables: ['orders', 'order_items', 'customers'],
+                auth: 'Cookie Session / JWT Bearer',
+                flow: [
+                    'Verifies authenticated user session',
+                    'Applies pagination, date range & status filters to Supabase query',
+                    'Computes total order values, items breakdown, and customer metadata',
+                    'Returns structured Order JSON response list'
+                ]
+            },
+            'Deliveries': {
+                tables: ['deliveries', 'orders', 'delivery_drivers'],
+                auth: 'Cookie Session / JWT Bearer',
+                flow: [
+                    'Validates delivery ID / order reference',
+                    'Updates status in Supabase `deliveries` table',
+                    'Calculates updated ETA and driver assignment state',
+                    'Returns delivery status payload'
+                ]
+            },
+            'Analytics': {
+                tables: ['orders', 'order_items'],
+                auth: 'Cookie Session / JWT Bearer',
+                flow: [
+                    'Fetches aggregate order records from Supabase DB',
+                    'Executes server-side pandas aggregation for revenue, average order value (AOV), and volume metrics',
+                    'Calculates percentage growth compared to previous period',
+                    'Returns structured analytics KPI metrics JSON'
+                ]
+            },
+            'Forecasting': {
+                tables: ['orders'],
+                auth: 'Cookie Session / JWT Bearer',
+                flow: [
+                    'Ingests historical order time-series data',
+                    'Runs predictive forecasting model (exponential smoothing / trend regression)',
+                    'Generates future date revenue/order predictions with confidence intervals',
+                    'Returns forecast projection data series for dashboard charts'
+                ]
+            },
+            'Exports': {
+                tables: ['orders', 'deliveries'],
+                auth: 'Cookie Session / JWT Bearer',
+                flow: [
+                    'Queries full dataset matching active dashboard filters',
+                    'Formats data stream into CSV, OpenPyXL Excel workbook, or ReportLab PDF',
+                    'Generates binary file stream response with attachment header'
+                ]
+            },
+            'RFM Analysis': {
+                tables: ['orders', 'customers'],
+                auth: 'Cookie Session / JWT Bearer',
+                flow: [
+                    'Groups order history by customer ID',
+                    'Calculates Recency (days since last order), Frequency (total count), and Monetary (total spent)',
+                    'Scores customers 1-5 across RFM metrics and assigns segments (VIP, Champions, At Risk)',
+                    'Returns RFM distribution array for customer intelligence UI'
+                ]
+            },
+            'Advanced Analytics': {
+                tables: ['orders', 'deliveries', 'customers'],
+                auth: 'Cookie Session / JWT Bearer',
+                flow: [
+                    'Executes multi-table joins and window functions',
+                    'Calculates retention cohort matrices and fulfillment latency metrics',
+                    'Formats high-dimensional insights JSON'
+                ]
+            },
+            'Uploads': {
+                tables: ['orders', 'order_items'],
+                auth: 'Cookie Session / JWT Bearer',
+                flow: [
+                    'Receives multipart form data file (CSV/XLSX)',
+                    'Parses spreadsheet via pandas, validates column schema & data types',
+                    'Executes batch upsert into Supabase `orders` table',
+                    'Returns import summary report with total rows processed'
+                ]
+            },
+            'Admin': {
+                tables: ['users', 'orders', 'system_logs'],
+                auth: 'Admin Privileges Required (is_admin=True)',
+                flow: [
+                    'Enforces strict admin role authorization check',
+                    'Queries platform-wide user management data and backend system health',
+                    'Executes administrative management operation'
+                ]
+            },
+            'Default': {
+                tables: ['system_db'],
+                auth: 'Cookie Session / JWT Bearer',
+                flow: [
+                    'Validates endpoint request parameters',
+                    'Queries database records',
+                    'Processes business logic execution',
+                    'Returns structured JSON response payload'
+                ]
+            }
         };
 
         // Fetch OpenAPI schema
@@ -840,8 +1038,9 @@ def get_api_portal_html() -> str:
                     if (['get', 'post', 'put', 'delete', 'patch'].includes(method.toLowerCase())) {
                         const tags = details.tags && details.tags.length ? details.tags : ['Default'];
                         
-                        // Extract Payload Schema if present
+                        // Extract Payload & Response Schemas
                         const payloadInfo = extractPayloadSchema(details.requestBody);
+                        const responseInfo = extractResponseSchema(details.responses);
 
                         allEndpoints.push({
                             path: path,
@@ -851,7 +1050,8 @@ def get_api_portal_html() -> str:
                             tags: tags,
                             operationId: details.operationId || '',
                             parameters: details.parameters || [],
-                            payload: payloadInfo
+                            payload: payloadInfo,
+                            response: responseInfo
                         });
                     }
                 }
@@ -896,14 +1096,11 @@ def get_api_portal_html() -> str:
 
             const properties = [];
             const sampleObj = {};
-
             const reqList = schema.required || [];
 
             for (const [propName, propDef] of Object.entries(schema.properties)) {
                 let pType = propDef.type || 'string';
-                if (propDef['$ref']) {
-                    pType = 'object';
-                }
+                if (propDef['$ref']) pType = 'object';
                 const isRequired = reqList.includes(propName);
                 
                 properties.push({
@@ -913,7 +1110,6 @@ def get_api_portal_html() -> str:
                     required: isRequired
                 });
 
-                // Build sample payload value
                 if (pType === 'string') sampleObj[propName] = propDef.example || (propName.includes('email') ? 'user@example.com' : (propName.includes('password') ? 'secret123' : 'string'));
                 else if (pType === 'integer' || pType === 'number') sampleObj[propName] = propDef.example || 1;
                 else if (pType === 'boolean') sampleObj[propName] = true;
@@ -924,6 +1120,44 @@ def get_api_portal_html() -> str:
             return {
                 sampleJson: JSON.stringify(sampleObj, null, 2),
                 properties: properties
+            };
+        }
+
+        // Extract Response Schema & Build Sample JSON Return
+        function extractResponseSchema(responses) {
+            if (!responses) return { statusCode: "200", sampleJson: '{\n  "status": "success",\n  "message": "Operation completed successfully"\n}' };
+            const successKey = Object.keys(responses).find(k => k.startsWith('2')) || '200';
+            const resObj = responses[successKey];
+            if (!resObj || !resObj.content) {
+                return { statusCode: successKey, sampleJson: '{\n  "status": "success",\n  "message": "Request processed successfully"\n}' };
+            }
+
+            const jsonContent = resObj.content['application/json'];
+            if (!jsonContent || !jsonContent.schema) {
+                return { statusCode: successKey, sampleJson: '{\n  "status": "success"\n}' };
+            }
+
+            let schema = jsonContent.schema;
+            if (schema['$ref']) schema = resolveRef(schema['$ref']) || schema;
+
+            if (!schema || !schema.properties) {
+                return { statusCode: successKey, sampleJson: '{\n  "status": "success"\n}' };
+            }
+
+            const sampleObj = {};
+            for (const [propName, propDef] of Object.entries(schema.properties)) {
+                let pType = propDef.type || 'string';
+                if (propName === 'status') sampleObj[propName] = 'success';
+                else if (pType === 'string') sampleObj[propName] = propDef.example || 'sample_value';
+                else if (pType === 'integer' || pType === 'number') sampleObj[propName] = propDef.example || 100;
+                else if (pType === 'boolean') sampleObj[propName] = true;
+                else if (pType === 'array') sampleObj[propName] = [];
+                else sampleObj[propName] = {};
+            }
+
+            return {
+                statusCode: successKey,
+                sampleJson: JSON.stringify(sampleObj, null, 2)
             };
         }
 
@@ -969,6 +1203,19 @@ def get_api_portal_html() -> str:
             renderContent();
         });
 
+        // Tab switcher inside drawer
+        function switchDrawerTab(cardId, tabName) {
+            const drawer = document.getElementById(cardId);
+            if (!drawer) return;
+            drawer.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+            drawer.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            const selectedTab = drawer.querySelector(`[data-tab="${tabName}"]`);
+            const selectedContent = drawer.querySelector(`[data-content="${tabName}"]`);
+            if (selectedTab) selectedTab.classList.add('active');
+            if (selectedContent) selectedContent.classList.add('active');
+        }
+
         // Render Main Route Cards
         function renderContent() {
             const container = document.getElementById('endpoints-container');
@@ -1007,6 +1254,11 @@ def get_api_portal_html() -> str:
             for (const [tag, items] of Object.entries(groups)) {
                 const iconSvg = categorySvgIcons[tag] || categorySvgIcons['Default'];
                 const groupDiv = document.createElement('div');
+                const archLogic = backendLogicMapping[tag] || backendLogicMapping['Default'] || {
+                    tables: ['system_db'],
+                    auth: 'Cookie Session / JWT Bearer',
+                    flow: ['Validates request inputs', 'Queries database', 'Returns JSON response']
+                };
 
                 let cardsHtml = items.map((ep, idx) => {
                     const drawerId = `drawer-${tag.replace(/\s+/g, '')}-${idx}`;
@@ -1016,14 +1268,14 @@ def get_api_portal_html() -> str:
                     let paramsHtml = '';
                     if (ep.parameters.length > 0) {
                         paramsHtml = `
-                            <div class="drawer-section-title">📌 Query & Path Parameters</div>
+                            <div class="drawer-section-title">📌 Query & Path Input Parameters</div>
                             <table class="param-table">
                                 <thead>
                                     <tr>
                                         <th>Parameter</th>
                                         <th>Type</th>
                                         <th>Required</th>
-                                        <th>In</th>
+                                        <th>Location</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1044,12 +1296,12 @@ def get_api_portal_html() -> str:
                     let payloadHtml = '';
                     if (ep.payload) {
                         payloadHtml = `
-                            <div class="drawer-section-title">📥 Request Body Payload Schema</div>
+                            <div class="drawer-section-title">📥 Request Body JSON Payload</div>
                             ${ep.payload.properties.length > 0 ? `
                                 <table class="param-table">
                                     <thead>
                                         <tr>
-                                            <th>Field</th>
+                                            <th>Field Name</th>
                                             <th>Data Type</th>
                                             <th>Required</th>
                                         </tr>
@@ -1066,13 +1318,52 @@ def get_api_portal_html() -> str:
                                 </table>
                             ` : ''}
 
-                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem; font-weight:700;">Sample JSON Request Body:</div>
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem; font-weight:700;">Sample Request JSON:</div>
                             <div class="code-block-wrapper">
                                 <button class="copy-code-btn" onclick="copyText(\`${ep.payload.sampleJson.replace(/`/g, '\\`')}\`)">Copy JSON</button>
                                 <pre class="code-block">${ep.payload.sampleJson}</pre>
                             </div>
                         `;
                     }
+
+                    // Response Output HTML
+                    const responseHtml = `
+                        <div class="drawer-section-title">📤 Expected Return Response (HTTP ${ep.response.statusCode})</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem; font-weight:700;">JSON Output Format returned to Frontend:</div>
+                        <div class="code-block-wrapper">
+                            <button class="copy-code-btn" onclick="copyText(\`${ep.response.sampleJson.replace(/`/g, '\\`')}\`)">Copy Response JSON</button>
+                            <pre class="code-block code-block-response">${ep.response.sampleJson}</pre>
+                        </div>
+                    `;
+
+                    // Architecture & DB Logic HTML
+                    const logicHtml = `
+                        <div class="arch-card">
+                            <div class="arch-title">🗄️ Database Tables Access</div>
+                            <div>
+                                ${archLogic.tables.map(tbl => `<span class="db-tag">table: ${tbl}</span>`).join('')}
+                            </div>
+                        </div>
+
+                        <div class="arch-card">
+                            <div class="arch-title">🔒 Authentication & Security</div>
+                            <div style="color:var(--text-secondary); font-size:0.85rem; font-weight:500;">
+                                ${archLogic.auth}
+                            </div>
+                        </div>
+
+                        <div class="arch-card">
+                            <div class="arch-title">⚙️ Backend Execution Workflow</div>
+                            <div>
+                                ${archLogic.flow.map((step, sIdx) => `
+                                    <div class="logic-step">
+                                        <div class="logic-step-num">${sIdx + 1}</div>
+                                        <div>${step}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
 
                     return `
                         <div class="route-card">
@@ -1096,9 +1387,31 @@ def get_api_portal_html() -> str:
                             </div>
 
                             <div class="route-drawer" id="${drawerId}">
-                                ${paramsHtml}
-                                ${payloadHtml}
-                                ${!paramsHtml && !payloadHtml ? '<div style="font-size:0.85rem; color:var(--text-muted);">No request payload or query parameters required for this endpoint.</div>' : ''}
+                                <div class="drawer-tabs">
+                                    <div class="drawer-tab active" data-tab="input" onclick="switchDrawerTab('${drawerId}', 'input')">
+                                        📥 Input Specs & Payload
+                                    </div>
+                                    <div class="drawer-tab" data-tab="output" onclick="switchDrawerTab('${drawerId}', 'output')">
+                                        📤 Expected Return Response
+                                    </div>
+                                    <div class="drawer-tab" data-tab="architecture" onclick="switchDrawerTab('${drawerId}', 'architecture')">
+                                        ⚙️ DB Tables & Working Logic
+                                    </div>
+                                </div>
+
+                                <div class="tab-content active" data-content="input">
+                                    ${paramsHtml}
+                                    ${payloadHtml}
+                                    ${!paramsHtml && !payloadHtml ? '<div style="font-size:0.85rem; color:var(--text-muted);">No input parameters or JSON payload required for this endpoint.</div>' : ''}
+                                </div>
+
+                                <div class="tab-content" data-content="output">
+                                    ${responseHtml}
+                                </div>
+
+                                <div class="tab-content" data-content="architecture">
+                                    ${logicHtml}
+                                </div>
                             </div>
                         </div>
                     `;

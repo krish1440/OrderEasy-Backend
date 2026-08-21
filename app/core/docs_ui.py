@@ -564,6 +564,15 @@ def get_api_portal_html() -> str:
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
+        .drawer-icon {
+            width: 15px;
+            height: 15px;
+            stroke-width: 2;
+            display: inline-block;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
         .tab-content {
             display: none;
         }
@@ -1268,7 +1277,10 @@ def get_api_portal_html() -> str:
                     let paramsHtml = '';
                     if (ep.parameters.length > 0) {
                         paramsHtml = `
-                            <div class="drawer-section-title">📌 Query & Path Input Parameters</div>
+                            <div class="drawer-section-title">
+                                <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
+                                Query & Path Input Parameters
+                            </div>
                             <table class="param-table">
                                 <thead>
                                     <tr>
@@ -1296,7 +1308,10 @@ def get_api_portal_html() -> str:
                     let payloadHtml = '';
                     if (ep.payload) {
                         payloadHtml = `
-                            <div class="drawer-section-title">📥 Request Body JSON Payload</div>
+                            <div class="drawer-section-title">
+                                <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                Request Body JSON Payload
+                            </div>
                             ${ep.payload.properties.length > 0 ? `
                                 <table class="param-table">
                                     <thead>
@@ -1328,7 +1343,10 @@ def get_api_portal_html() -> str:
 
                     // Response Output HTML
                     const responseHtml = `
-                        <div class="drawer-section-title">📤 Expected Return Response (HTTP ${ep.response.statusCode})</div>
+                        <div class="drawer-section-title">
+                            <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Expected Return Response (HTTP ${ep.response.statusCode})
+                        </div>
                         <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem; font-weight:700;">JSON Output Format returned to Frontend:</div>
                         <div class="code-block-wrapper">
                             <button class="copy-code-btn" onclick="copyText(\`${ep.response.sampleJson.replace(/`/g, '\\`')}\`)">Copy Response JSON</button>
@@ -1339,21 +1357,30 @@ def get_api_portal_html() -> str:
                     // Architecture & DB Logic HTML
                     const logicHtml = `
                         <div class="arch-card">
-                            <div class="arch-title">🗄️ Database Tables Access</div>
+                            <div class="arch-title">
+                                <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                                Database Tables Access
+                            </div>
                             <div>
                                 ${archLogic.tables.map(tbl => `<span class="db-tag">table: ${tbl}</span>`).join('')}
                             </div>
                         </div>
 
                         <div class="arch-card">
-                            <div class="arch-title">🔒 Authentication & Security</div>
+                            <div class="arch-title">
+                                <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                Authentication & Security
+                            </div>
                             <div style="color:var(--text-secondary); font-size:0.85rem; font-weight:500;">
                                 ${archLogic.auth}
                             </div>
                         </div>
 
                         <div class="arch-card">
-                            <div class="arch-title">⚙️ Backend Execution Workflow</div>
+                            <div class="arch-title">
+                                <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                                Backend Execution Workflow
+                            </div>
                             <div>
                                 ${archLogic.flow.map((step, sIdx) => `
                                     <div class="logic-step">
@@ -1389,13 +1416,16 @@ def get_api_portal_html() -> str:
                             <div class="route-drawer" id="${drawerId}">
                                 <div class="drawer-tabs">
                                     <div class="drawer-tab active" data-tab="input" onclick="switchDrawerTab('${drawerId}', 'input')">
-                                        📥 Input Specs & Payload
+                                        <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                        Input Specs & Payload
                                     </div>
                                     <div class="drawer-tab" data-tab="output" onclick="switchDrawerTab('${drawerId}', 'output')">
-                                        📤 Expected Return Response
+                                        <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                        Expected Return Response
                                     </div>
                                     <div class="drawer-tab" data-tab="architecture" onclick="switchDrawerTab('${drawerId}', 'architecture')">
-                                        ⚙️ DB Tables & Working Logic
+                                        <svg class="drawer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                                        DB Tables & Working Logic
                                     </div>
                                 </div>
 

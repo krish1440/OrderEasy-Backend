@@ -109,53 +109,66 @@ def check_5day_pending_alerts(token: str = None):
                 org_orders_map[org_key] = []
             org_orders_map[org_key].append(o)
 
-        # Fetch user email addresses from Supabase users table
+        # Fetch user email addresses from Supabase users table (case-insensitive lookup)
         user_res = supabase.table("users").select("username, organization, email").execute()
         user_email_map = {}
         if user_res.data:
             for u in user_res.data:
                 u_email = u.get("email")
                 if u_email and "@" in str(u_email):
+                    u_email_str = str(u_email).strip()
                     if u.get("organization"):
-                        user_email_map[u["organization"]] = u_email
+                        user_email_map[str(u["organization"]).strip().lower()] = u_email_str
                     if u.get("username"):
-                        user_email_map[u["username"]] = u_email
-                    user_email_map[u_email] = u_email
+                        user_email_map[str(u["username"]).strip().lower()] = u_email_str
+                    user_email_map[u_email_str.lower()] = u_email_str
 
         sent_count = 0
         total_emails_sent = 0
 
-        # Send isolated batched email ONLY to the owner of those orders
+        # Send isolated batched email to each user/organization
         for org_key, org_orders in org_orders_map.items():
-            # Resolve exact recipient email address for this organization/user
-            recipient_email = user_email_map.get(org_key)
-            if not recipient_email and "@" in str(org_key):
-                recipient_email = org_key
+            org_key_str = str(org_key).strip()
 
-            # If org is ADMIN, send to ADMIN_EMAIL; otherwise require a valid user email
+            # 1. Look up in user_email_map
+            recipient_email = user_email_map.get(org_key_str.lower())
+
+            # 2. Check if org_key itself is an email address
+            if not recipient_email and "@" in org_key_str:
+                recipient_email = org_key_str
+
+            # 3. Check individual order fields for user email
             if not recipient_email:
-                if org_key.upper() in ["ADMIN", "KRISH"]:
-                    from app.core.email import ADMIN_EMAIL
-                    recipient_email = ADMIN_EMAIL
-                else:
-                    logger.warning(f"Skipping email alert for org '{org_key}': No registered email found for this user/org.")
-                    continue
+                for order in org_orders:
+                    for f in ["user_email", "email", "created_by"]:
+                        val = order.get(f)
+                        if val and "@" in str(val):
+                            recipient_email = str(val).strip()
+                            break
+                    if recipient_email:
+                        break
+
+            # 4. Fallback to ADMIN_EMAIL
+            if not recipient_email:
+                from app.core.email import ADMIN_EMAIL
+                recipient_email = ADMIN_EMAIL
 
             email_sent = send_admin_pending_orders_alert(org_orders, recipient_email=recipient_email)
 
             if email_sent:
                 total_emails_sent += 1
                 sent_count += len(org_orders)
-                # Mark orders as alerted in Supabase
+
+                # Mark orders as alerted in Supabase (updating via both id and order_id + org)
                 for order in org_orders:
-                    order_db_id = order.get("id") or order.get("order_id")
                     try:
                         if order.get("id"):
                             supabase.table("orders").update({"admin_alert_sent": True}).eq("id", order["id"]).execute()
-                        else:
-                            supabase.table("orders").update({"admin_alert_sent": True}).eq("order_id", order["order_id"]).execute()
+                        
+                        if order.get("order_id") is not None and order.get("org"):
+                            supabase.table("orders").update({"admin_alert_sent": True}).eq("order_id", order["order_id"]).eq("org", order["org"]).execute()
                     except Exception as update_err:
-                        logger.error(f"Failed to update admin_alert_sent for order {order_db_id}: {update_err}")
+                        logger.error(f"Failed to update admin_alert_sent for order {order.get('order_id')}: {update_err}")
 
         logger.info(f"Successfully processed 5-day alert for {sent_count} order(s) across {total_emails_sent} user(s).")
         return {

@@ -920,13 +920,15 @@ def get_api_portal_html() -> str:
                 ]
             },
             'Orders': {
-                tables: ['orders', 'order_items', 'customers'],
-                auth: 'Cookie Session / JWT Bearer',
+                tables: ['orders', 'users', 'order_items'],
+                auth: 'Cookie Session / Security Cron Token (?token=...)',
                 flow: [
-                    'Verifies authenticated user session',
-                    'Applies pagination, date range & status filters to Supabase query',
-                    'Computes total order values, items breakdown, and customer metadata',
-                    'Returns structured Order JSON response list'
+                    'Verifies authenticated user session or `CRON_SECRET_TOKEN` security parameter',
+                    'Queries approaching pending orders (`status == Pending`) with expected delivery dates within 5 days',
+                    'Groups pending orders per organization/user and fetches registered user email addresses',
+                    'Dispatches executive anti-spam HTML email alerts via Resend API (0 emojis, corporate formatting)',
+                    'Updates `admin_alert_sent = True` in Supabase database to prevent duplicate notifications',
+                    'Returns structured Order JSON response list or execution summary'
                 ]
             },
             'Deliveries': {

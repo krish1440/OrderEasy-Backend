@@ -1,7 +1,9 @@
+from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Request, HTTPException
 from app.core.supabase import supabase
 from app.core.session import require_login
 from app.core.logger import get_logger
+from app.core.email import send_admin_pending_orders_alert
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -52,6 +54,106 @@ def get_next_order_id(org: str) -> int:
     )
 
     return res.data[0]["order_id"] + 1 if res.data else 1
+
+
+# -------------------------------------------------
+# 🔔 5-DAY PENDING ORDER ALERT TRIGGER (CRON / MULTI-TENANT)
+# -------------------------------------------------
+@router.get("/check-5day-alerts")
+def check_5day_pending_alerts(token: str = None):
+    """
+    Checks Supabase database for pending orders with an expected delivery date arriving within 5 days.
+    Groups orders by organization (user account), fetches each user's email address,
+    and sends a SINGLE batched email alert to each user containing ONLY their own orders.
+    Marks `admin_alert_sent = True` to guarantee NO duplicate alerts for the same order.
+    Requires `token` matching CRON_SECRET_TOKEN environment variable for security.
+    """
+    import os
+    cron_secret = os.getenv("CRON_SECRET_TOKEN", "ordereasy_cron_secret_2026")
+    if token != cron_secret:
+        raise HTTPException(401, "Unauthorized: Invalid or missing cron security token.")
+
+    try:
+        today = date.today()
+        five_days_hence = today + timedelta(days=5)
+
+        # Query pending orders approaching delivery date
+        res = (
+            supabase.table("orders")
+            .select("*")
+            .neq("status", "Completed")
+            .lte("expected_delivery_date", five_days_hence.isoformat())
+            .execute()
+        )
+
+        orders_data = res.data or []
+
+        # Filter out orders that have already received an alert
+        unnotified_orders = [
+            o for o in orders_data
+            if not o.get("admin_alert_sent", False)
+        ]
+
+        if not unnotified_orders:
+            return {
+                "status": "ok",
+                "message": "No pending orders approaching 5-day delivery deadline.",
+                "count": 0
+            }
+
+        # Group unnotified orders by organization / user
+        org_orders_map = {}
+        for o in unnotified_orders:
+            org_key = o.get("org") or o.get("created_by") or "default"
+            if org_key not in org_orders_map:
+                org_orders_map[org_key] = []
+            org_orders_map[org_key].append(o)
+
+        # Fetch user email addresses for each organization from Supabase
+        user_res = supabase.table("users").select("organization, email").execute()
+        user_email_map = {}
+        if user_res.data:
+            for u in user_res.data:
+                if u.get("organization") and u.get("email"):
+                    user_email_map[u["organization"]] = u["email"]
+
+        sent_count = 0
+        total_emails_sent = 0
+
+        # Send personalized batched email to each user/organization
+        for org_key, org_orders in org_orders_map.items():
+            # Get user's email or fallback to admin email
+            recipient_email = user_email_map.get(org_key)
+            if not recipient_email and "@" in org_key:
+                recipient_email = org_key
+
+            email_sent = send_admin_pending_orders_alert(org_orders, recipient_email=recipient_email)
+
+            if email_sent:
+                total_emails_sent += 1
+                sent_count += len(org_orders)
+                # Mark orders as alerted in Supabase
+                for order in org_orders:
+                    order_db_id = order.get("id") or order.get("order_id")
+                    try:
+                        if order.get("id"):
+                            supabase.table("orders").update({"admin_alert_sent": True}).eq("id", order["id"]).execute()
+                        else:
+                            supabase.table("orders").update({"admin_alert_sent": True}).eq("order_id", order["order_id"]).execute()
+                    except Exception as update_err:
+                        logger.error(f"Failed to update admin_alert_sent for order {order_db_id}: {update_err}")
+
+        logger.info(f"Successfully processed 5-day alert for {sent_count} order(s) across {total_emails_sent} user(s).")
+        return {
+            "status": "success",
+            "message": f"Successfully sent 5-day alert email to {total_emails_sent} user(s) for {sent_count} pending order(s).",
+            "emails_sent": total_emails_sent,
+            "orders_processed": sent_count
+        }
+
+    except Exception as e:
+        logger.error(f"Error checking 5-day pending alerts: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 # -------------------------------------------------

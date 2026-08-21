@@ -1,9 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import SECRET_KEY
 from app.core.logger import get_logger
+from app.core.docs_ui import get_api_portal_html
 
 # Routers
 from app.auth.routes import router as auth_router
@@ -24,7 +26,8 @@ from app.upload.routes import router as upload_router
 app = FastAPI(
     title="OrderEasy Analytics",
     description="Enterprise Order & Business Intelligence Platform",
-    version="1.0.0"
+    version="2.4.1",
+    redoc_url=None
 )
 
 logger = get_logger(__name__)
@@ -95,12 +98,17 @@ app.include_router(upload_router, prefix="/upload", tags=["Uploads"])
 # ------------------------------------------------
 # Root & Health Check
 # -------------------------------------------------
-@app.get("/")
-def root():
-    return {
-        "status": "online",
-        "message": "OrderEasy Analytics Backend is Live 🚀"
-    }
+@app.get("/", response_class=HTMLResponse)
+def root(request: Request, format: str = None):
+    # If client specifically requests JSON format or header
+    accept_header = request.headers.get("accept", "")
+    if format == "json" or "application/json" in accept_header and "text/html" not in accept_header:
+        return {
+            "status": "online",
+            "message": "OrderEasy Analytics Backend is Live 🚀"
+        }
+    
+    return HTMLResponse(content=get_api_portal_html(), status_code=200)
 
 @app.get("/health")
 def health_check():

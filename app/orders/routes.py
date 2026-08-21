@@ -109,23 +109,37 @@ def check_5day_pending_alerts(token: str = None):
                 org_orders_map[org_key] = []
             org_orders_map[org_key].append(o)
 
-        # Fetch user email addresses for each organization from Supabase
-        user_res = supabase.table("users").select("organization, email").execute()
+        # Fetch user email addresses from Supabase users table
+        user_res = supabase.table("users").select("username, organization, email").execute()
         user_email_map = {}
         if user_res.data:
             for u in user_res.data:
-                if u.get("organization") and u.get("email"):
-                    user_email_map[u["organization"]] = u["email"]
+                u_email = u.get("email")
+                if u_email and "@" in str(u_email):
+                    if u.get("organization"):
+                        user_email_map[u["organization"]] = u_email
+                    if u.get("username"):
+                        user_email_map[u["username"]] = u_email
+                    user_email_map[u_email] = u_email
 
         sent_count = 0
         total_emails_sent = 0
 
-        # Send personalized batched email to each user/organization
+        # Send isolated batched email ONLY to the owner of those orders
         for org_key, org_orders in org_orders_map.items():
-            # Get user's email or fallback to admin email
+            # Resolve exact recipient email address for this organization/user
             recipient_email = user_email_map.get(org_key)
-            if not recipient_email and "@" in org_key:
+            if not recipient_email and "@" in str(org_key):
                 recipient_email = org_key
+
+            # If org is ADMIN, send to ADMIN_EMAIL; otherwise require a valid user email
+            if not recipient_email:
+                if org_key.upper() in ["ADMIN", "KRISH"]:
+                    from app.core.email import ADMIN_EMAIL
+                    recipient_email = ADMIN_EMAIL
+                else:
+                    logger.warning(f"Skipping email alert for org '{org_key}': No registered email found for this user/org.")
+                    continue
 
             email_sent = send_admin_pending_orders_alert(org_orders, recipient_email=recipient_email)
 

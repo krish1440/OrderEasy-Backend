@@ -197,7 +197,7 @@ def build_advanced_admin_alert_html(orders: List[Dict[str, Any]]) -> str:
 def send_admin_pending_orders_alert(orders: List[Dict[str, Any]], recipient_email: str = None) -> bool:
     """
     Dispatches the batched 5-day pending orders alert email via Resend API to the specific organization/user email.
-    Uses clean corporate subject line to maximize inbox deliverability (avoiding spam filters).
+    Guarantees each user receives ONLY their own orders at their registered email.
     """
     if not RESEND_API_KEY:
         logger.error("RESEND_API_KEY is not configured in environment variables.")
@@ -208,6 +208,9 @@ def send_admin_pending_orders_alert(orders: List[Dict[str, Any]], recipient_emai
         return False
 
     target_email = recipient_email or ADMIN_EMAIL
+    if not target_email or "@" not in str(target_email):
+        logger.warning(f"Skipping email alert dispatch: No valid recipient email found for orders: {orders}")
+        return False
     html_content = build_advanced_admin_alert_html(orders)
     
     # Professional Anti-Spam Subject Line (no emojis, no ALL-CAPS spam triggers)

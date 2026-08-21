@@ -22,28 +22,46 @@ if RESEND_API_KEY:
 def build_advanced_admin_alert_html(orders: List[Dict[str, Any]]) -> str:
     """
     Generates an enterprise-grade, responsive HTML email template for 5-Day Pending Orders.
-    Includes Order IDs, Customer Info, Expected Delivery Dates, Total Amounts, Items & CTA Button.
+    Extracts real Supabase column fields: order_id, receiver_name, product, quantity, total_amount_with_gst, expected_delivery_date.
     """
     total_orders = len(orders)
-    total_value = sum(float(o.get('total_amount', 0) or 0) for o in orders)
+    
+    # Calculate total value using total_amount_with_gst or pending_amount or price
+    total_value = 0.0
+    for o in orders:
+        val = o.get('total_amount_with_gst') or o.get('total_amount') or o.get('pending_amount') or o.get('price') or 0
+        try:
+            total_value += float(val)
+        except (ValueError, TypeError):
+            pass
+
     orders_url = f"{FRONTEND_URL}/#/orders"
 
     orders_rows = ""
     for o in orders:
-        order_id = o.get('id', 'N/A')
-        customer = o.get('customer_name') or o.get('user_email') or 'Guest Customer'
-        expected_date = o.get('expected_delivery_date') or o.get('delivery_date') or 'Approaching Soon'
-        status = o.get('status', 'Pending').capitalize()
-        amount = f"₹{float(o.get('total_amount', 0) or 0):,.2f}"
-        items_count = o.get('total_items') or len(o.get('items', [])) or 1
+        # Extract exact Supabase database column names
+        order_num = o.get('order_id') if o.get('order_id') is not None else o.get('id', 'N/A')
+        customer = o.get('receiver_name') or o.get('customer_name') or o.get('org') or 'Customer'
+        expected_date = o.get('expected_delivery_date') or o.get('date') or 'Approaching Soon'
+        product_name = o.get('product') or 'Order Item'
+        qty = o.get('quantity') or 1
+        
+        # Format Amount
+        val = o.get('total_amount_with_gst') or o.get('pending_amount') or o.get('total_amount') or o.get('price') or 0
+        try:
+            amount_num = float(val)
+            amount_str = f"₹{amount_num:,.2f}"
+        except (ValueError, TypeError):
+            amount_str = "₹0.00"
 
         orders_rows += f"""
         <tr>
-            <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #4f46e5;">
-                #{str(order_id)[:8]}
+            <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 800; color: #4f46e5;">
+                #{order_num}
             </td>
             <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 600; color: #1e293b;">
-                {customer}
+                <div>{customer}</div>
+                <div style="font-size: 12px; color: #64748b; font-weight: 400; margin-top: 2px;">📦 {product_name}</div>
             </td>
             <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #d97706; font-weight: 700;">
                 <span style="background: #fffbeb; border: 1px solid #fde68a; padding: 4px 10px; border-radius: 6px; display: inline-block;">
@@ -51,10 +69,10 @@ def build_advanced_admin_alert_html(orders: List[Dict[str, Any]]) -> str:
                 </span>
             </td>
             <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #64748b;">
-                {items_count} item(s)
+                {qty} qty
             </td>
             <td style="padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 800; color: #059669; text-align: right;">
-                {amount}
+                {amount_str}
             </td>
         </tr>
         """
@@ -83,7 +101,7 @@ def build_advanced_admin_alert_html(orders: List[Dict[str, Any]]) -> str:
                                 <tr>
                                     <td>
                                         <div style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
-                                            OrderEasy <span style="font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 20px; vertical-align: middle;">ADMIN ALERT</span>
+                                            OrderEasy <span style="font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 20px; vertical-align: middle;">PENDING ALERT</span>
                                         </div>
                                         <div style="color: #c7d2fe; font-size: 13px; margin-top: 4px;">
                                             Enterprise Intelligence & Automated Dispatch Engine
@@ -104,7 +122,7 @@ def build_advanced_admin_alert_html(orders: List[Dict[str, Any]]) -> str:
                                 Approaching Pending Delivery Alert
                             </h2>
                             <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0;">
-                                Hello Admin, the following <strong>{total_orders} pending order(s)</strong> have an expected delivery date arriving within the next <strong>5 days</strong>. Please review and ensure fulfillment dispatch.
+                                Hello, the following <strong>{total_orders} pending order(s)</strong> have an expected delivery date arriving within the next <strong>5 days</strong>. Please review and process fulfillment.
                             </p>
                         </td>
                     </tr>
@@ -115,7 +133,7 @@ def build_advanced_admin_alert_html(orders: List[Dict[str, Any]]) -> str:
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;">
                                 <tr>
                                     <td width="50%" style="text-align: center; border-right: 1px solid #e2e8f0; padding-right: 10px;">
-                                        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.5px;">Approaching Orders</div>
+                                        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.5px;">Pending Orders</div>
                                         <div style="font-size: 24px; font-weight: 800; color: #4f46e5; margin-top: 2px;">{total_orders}</div>
                                     </td>
                                     <td width="50%" style="text-align: center; padding-left: 10px;">
@@ -131,16 +149,16 @@ def build_advanced_admin_alert_html(orders: List[Dict[str, Any]]) -> str:
                     <tr>
                         <td style="padding: 0 30px 25px 30px;">
                             <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">
-                                📋 Pending Orders Breakdown:
+                                📋 Approaching Pending Orders Breakdown:
                             </div>
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
                                 <thead>
                                     <tr style="background-color: #f1f5f9;">
                                         <th style="padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Order ID</th>
-                                        <th style="padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Customer</th>
+                                        <th style="padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Receiver & Product</th>
                                         <th style="padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Expected Date</th>
-                                        <th style="padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Items</th>
-                                        <th style="padding: 10px 16px; text-align: right; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Amount</th>
+                                        <th style="padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Qty</th>
+                                        <th style="padding: 10px 16px; text-align: right; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase;">Total Amount</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -165,7 +183,7 @@ def build_advanced_admin_alert_html(orders: List[Dict[str, Any]]) -> str:
                     <!-- Footer -->
                     <tr>
                         <td style="background-color: #f8fafc; padding: 20px 30px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #64748b;">
-                            <div>Sent to <strong>{ADMIN_EMAIL}</strong> • OrderEasy Analytics Platform</div>
+                            <div>OrderEasy Analytics Platform Alert Engine</div>
                             <div style="margin-top: 4px; color: #94a3b8;">
                                 Note: Duplicate alert protection is active. This notification will be sent only once per order.
                             </div>

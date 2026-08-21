@@ -77,11 +77,11 @@ def check_5day_pending_alerts(token: str = None):
         today = date.today()
         five_days_hence = today + timedelta(days=5)
 
-        # Query pending orders approaching delivery date
+        # Query pending orders approaching delivery date (strictly status == Pending)
         res = (
             supabase.table("orders")
             .select("*")
-            .neq("status", "Completed")
+            .eq("status", "Pending")
             .lte("expected_delivery_date", five_days_hence.isoformat())
             .execute()
         )

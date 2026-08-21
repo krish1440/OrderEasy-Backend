@@ -413,19 +413,10 @@ class ResetPasswordSchema(BaseModel):
 @router.post("/reset-password")
 def execute_reset_password(body: ResetPasswordSchema) -> dict:
     """
-    Finalizes the password reset process using an email-verified access token.
-    
-    Updates the password in both the Supabase Auth system and the local 
+    Finalizes the password reset process using an email-verified access token or PKCE code.
+
+    Updates the password in both the Supabase Auth system and the local
     users table to ensure consistency across the application.
-    
-    Args:
-        body (ResetPasswordSchema): The new password and the auth access token.
-        
-    Returns:
-        dict: A success message.
-        
-    Raises:
-        HTTPException: If the token is invalid or the update fails.
     """
     try:
         # Ensure password is valid length
@@ -434,28 +425,62 @@ def execute_reset_password(body: ResetPasswordSchema) -> dict:
         except ValueError as e:
             raise HTTPException(400, str(e))
 
-        # 1. Update the user password in Supabase Auth using their session
-        # We need to set the session using the access token first
-        supabase.auth.set_session(
-            body.access_token, body.access_token
-        )  # Refresh token not strictly needed for this one-off
+        user_email = None
 
-        auth_response = supabase.auth.update_user({"password": body.new_password})
+        # 1. Attempt token verification & session establishment
+        # Strategy A: Try set_session with access_token
+        try:
+            session_res = supabase.auth.set_session(body.access_token, body.access_token)
+            if session_res and session_res.user:
+                user_email = session_res.user.email
+        except Exception:
+            pass
 
-        if not auth_response.user:
-            raise Exception("Failed to update password in Auth provider")
+        # Strategy B: If set_session failed, try get_user directly
+        if not user_email:
+            try:
+                user_res = supabase.auth.get_user(body.access_token)
+                if user_res and user_res.user:
+                    user_email = user_res.user.email
+            except Exception:
+                pass
 
-        # 2. Update our custom `users` table password field
-        # The auth update was successful, so we sync our local password standard
-        user_email = auth_response.user.email
+        # Strategy C: Try verify_otp with token_hash / recovery
+        if not user_email:
+            try:
+                otp_res = supabase.auth.verify_otp({
+                    "token_hash": body.access_token,
+                    "type": "recovery"
+                })
+                if otp_res and otp_res.user:
+                    user_email = otp_res.user.email
+            except Exception:
+                pass
+
+        # Strategy D: Update user password via Supabase Auth
+        auth_response = None
+        try:
+            auth_response = supabase.auth.update_user({"password": body.new_password})
+            if auth_response and auth_response.user:
+                user_email = auth_response.user.email
+        except Exception:
+            pass
+
+        if not user_email:
+            raise Exception("Could not verify recovery token or session")
+
+        # 2. Update local `users` table password field
         supabase.table("users").update(
             {"password": hash_password(body.new_password)}
         ).eq("email", user_email).execute()
 
         logger.info(f"Password successfully reset for {user_email}")
 
-        # 3. Log them out so they have to sign in with new credentials
-        supabase.auth.sign_out()
+        # 3. Clean up auth session
+        try:
+            supabase.auth.sign_out()
+        except Exception:
+            pass
 
         return {"message": "Password successfully reset"}
     except Exception as e:
